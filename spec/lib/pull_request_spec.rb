@@ -45,6 +45,48 @@ RSpec.describe PullRequest do
     end
   end
 
+  describe ".is_auto_mergeable?" do
+    it "should make a call to validate_single_commit" do
+      pr = PullRequest.new(pull_request_api_response)
+      allow(pr).to receive(:validate_single_commit).and_return(false)
+      expect(pr).to receive(:validate_single_commit)
+      pr.is_auto_mergeable?
+      expect(pr.reasons_not_to_merge).to eq([
+        "PR contains more than one commit.",
+      ])
+    end
+  end
+
+  describe ".validate_single_commit" do
+    let(:commit_response) do
+      {
+        sha: "abc123",
+        commit: {
+          author: {
+            name: "dependabot[bot]",
+          },
+        },
+      }
+    end
+    let(:commit_api_url) { "https://api.github.com/repos/alphagov/#{repo_name}/pulls/1/commits" }
+
+    it "return true if PR contains a single commit" do
+      stub_request(:get, commit_api_url)
+        .to_return(status: 200, body: [commit_response])
+
+      pr = PullRequest.new(pull_request_api_response)
+      expect(pr.validate_single_commit).to eq(true)
+    end
+
+    it "return false if PR contains more than one commit" do
+      stub_request(:get, commit_api_url)
+        .to_return(status: 200, body: [commit_response, commit_response])
+
+      pr = PullRequest.new(pull_request_api_response)
+      expect(pr.validate_single_commit).to eq(false)
+    end
+  end
+
   describe ".merge!" do
     it "should output the name and PR number" do
       pr = PullRequest.new(pull_request_api_response)
