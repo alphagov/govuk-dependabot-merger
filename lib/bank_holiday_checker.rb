@@ -1,3 +1,6 @@
+require "json"
+require "net/http"
+
 class BankHolidayChecker
   def self.is_bank_holiday?
     uri = "https://www.gov.uk/bank-holidays.json"

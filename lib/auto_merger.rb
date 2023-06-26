@@ -1,4 +1,5 @@
 require_relative "./bank_holiday_checker"
+require_relative "./repos"
 
 class AutoMerger
   def self.invoke_merge_script!
