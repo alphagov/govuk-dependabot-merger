@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - ".git**"
+  pull_request:
+
+jobs:
+  test-ruby:
+    name: Test Ruby
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: Run linting
+        run: bundle exec rubocop
+
+      - name: Run unit tests
+        run: bundle exec rspec
