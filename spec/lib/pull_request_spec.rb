@@ -5,6 +5,7 @@ RSpec.describe PullRequest do
   before { set_up_mock_token }
 
   let(:repo_name) { "foo" }
+  let(:sha) { "ee241dea8da11aff8e575941c138a7f34ddb1a51" }
   let(:pull_request_api_response) do
     # Using OpenStruct to make each property callable as a method,
     # just like OctoKit
@@ -20,9 +21,9 @@ RSpec.describe PullRequest do
       }),
       labels: [],
       draft: false,
-      statuses_url: "https://api.github.com/repos/alphagov/#{repo_name}/statuses/ee241dea8da11aff8e575941c138a7f34ddb1a51",
+      statuses_url: "https://api.github.com/repos/alphagov/#{repo_name}/statuses/#{sha}",
       head: OpenStruct.new({
-        sha: "ee241dea8da11aff8e575941c138a7f34ddb1a51",
+        sha:,
       }),
       base: OpenStruct.new({
         repo: OpenStruct.new({
@@ -30,6 +31,42 @@ RSpec.describe PullRequest do
         }),
       }),
     })
+  end
+  let(:head_commit_api_url) { "https://api.github.com/repos/alphagov/#{repo_name}/commits/#{sha}" }
+  let(:head_commit_api_response) do
+    {
+      sha:,
+      commit: {
+        author: {
+          name: "dependabot[bot]",
+        },
+      },
+      author: {
+        login: "dependabot[bot]",
+      },
+      stats: {
+        total: 2,
+        additions: 1,
+        deletions: 1,
+      },
+      files: [
+        {
+          sha: "def456",
+          filename: "Gemfile.lock",
+          status: "modified",
+          patch: <<~GEMFILE_LOCK_DIFF,
+            govuk_personalisation (0.13.0)
+                    plek (>= 1.9.0)
+                    rails (>= 6, < 8)
+            -    govuk_publishing_components (35.7.0)
+            +    govuk_publishing_components (35.8.0)
+                    govuk_app_config
+                    govuk_personalisation (>= 0.7.0)
+                    kramdown
+          GEMFILE_LOCK_DIFF
+        },
+      ],
+    }
   end
 
   describe ".initialize" do
@@ -47,13 +84,30 @@ RSpec.describe PullRequest do
 
   describe ".is_auto_mergeable?" do
     it "should make a call to validate_single_commit" do
-      pr = PullRequest.new(pull_request_api_response)
+      pr = create_pull_request_instance
       allow(pr).to receive(:validate_single_commit).and_return(false)
       expect(pr).to receive(:validate_single_commit)
       pr.is_auto_mergeable?
       expect(pr.reasons_not_to_merge).to eq([
         "PR contains more than one commit.",
       ])
+    end
+
+    it "should make a call to validate_files_changed" do
+      pr = create_pull_request_instance
+      allow(pr).to receive(:validate_files_changed).and_return(false)
+      expect(pr).to receive(:validate_files_changed)
+      pr.is_auto_mergeable?
+      expect(pr.reasons_not_to_merge).to eq([
+        "PR changes files that should not be changed.",
+      ])
+    end
+
+    def create_pull_request_instance
+      pr = PullRequest.new(pull_request_api_response)
+      allow(pr).to receive(:validate_single_commit).and_return(true)
+      allow(pr).to receive(:validate_files_changed).and_return(true)
+      pr
     end
   end
 
@@ -87,6 +141,23 @@ RSpec.describe PullRequest do
     end
   end
 
+  describe ".validate_files_changed" do
+    it "returns true if PR only changes Gemfile.lock" do
+      stub_remote_commit(head_commit_api_response)
+
+      pr = PullRequest.new(pull_request_api_response)
+      expect(pr.validate_files_changed).to eq(true)
+    end
+
+    it "returns false if PR changes anything else" do
+      head_commit_api_response[:files][0][:filename] = "something_else.rb"
+      stub_remote_commit(head_commit_api_response)
+
+      pr = PullRequest.new(pull_request_api_response)
+      expect(pr.validate_files_changed).to eq(false)
+    end
+  end
+
   describe ".merge!" do
     it "should output the name and PR number" do
       pr = PullRequest.new(pull_request_api_response)
@@ -95,5 +166,10 @@ RSpec.describe PullRequest do
       expect { pr.merge! }.to output("Merging foo#1...\n").to_stdout
       expect(WebMock).to have_requested(:put, "https://api.github.com/repos/alphagov/#{repo_name}/pulls/1/merge")
     end
+  end
+
+  def stub_remote_commit(head_commit_api_response)
+    stub_request(:get, head_commit_api_url)
+      .to_return(status: 200, body: head_commit_api_response.to_json, headers: { "Content-Type": "application/json" })
   end
 end
