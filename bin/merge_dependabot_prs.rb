@@ -1,8 +1,3 @@
-require_relative "../lib/repos"
+require_relative "../lib/auto_merger"
 
-Repos.all.each do |repo|
-  repo.dependabot_pull_requests.each do |pr|
-    # TODO: add all the validation rules from RFC-156
-    pr.merge!
-  end
-end
+AutoMerger.invoke_merge_script!
