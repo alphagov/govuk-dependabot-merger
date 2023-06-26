@@ -7,7 +7,7 @@ We've deliberately avoided giving write access to the GOV.UK Production Deploy g
 
 ## Technical documentation
 
-### Usage
+### Usage
 
 You'll need to create a `AUTO_MERGE_TOKEN` ENV variable, which must be a fine-grained GitHub personal access token with the following permissions:
 
