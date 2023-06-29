@@ -38,6 +38,13 @@ RSpec.describe PullRequest do
     end
   end
 
+  describe ".number" do
+    it "should return the number of the PR" do
+      pr = PullRequest.new(pull_request_api_response)
+      expect(pr.number).to eq(1)
+    end
+  end
+
   describe ".merge!" do
     it "should output the name and PR number" do
       pr = PullRequest.new(pull_request_api_response)

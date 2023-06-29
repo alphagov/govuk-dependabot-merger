@@ -6,6 +6,10 @@ class Repo
     @repo_name = repo_name
   end
 
+  def name
+    @repo_name
+  end
+
   def dependabot_pull_requests
     GitHubClient
       .instance

@@ -12,7 +12,16 @@ class AutoMerger
 
   def merge_dependabot_prs
     Repos.all.each do |repo|
-      repo.dependabot_pull_requests.each(&:merge!)
+      repo.dependabot_pull_requests.each do |pr|
+        puts "Inspecting #{repo.name}##{pr.number}..."
+
+        if pr.is_auto_mergeable?
+          puts "...merging! 🎉"
+          pr.merge!
+        else
+          puts "...skipping."
+        end
+      end
     end
   end
 end
