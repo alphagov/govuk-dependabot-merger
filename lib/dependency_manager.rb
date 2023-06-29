@@ -22,6 +22,18 @@ class DependencyManager
     true
   end
 
+  def all_proposed_updates_semver_allowed?
+    proposed_dependency_updates.each do |proposed_update|
+      dependency_recognised = allowed_dependency_updates.find { |dep| dep[:name] == proposed_update[:name] }
+      next unless dependency_recognised
+
+      update_type = DependencyManager.update_type(proposed_update[:previous_version], proposed_update[:next_version])
+      return false unless dependency_recognised[:allowed_semver_bumps].include?(update_type.to_s)
+    end
+
+    true
+  end
+
   def self.update_type(previous_version, next_version)
     raise SemverException unless [previous_version, next_version].all? { |str| str.match?(/^[0-9]+\.[0-9]+\.[0-9]+$/) }
 

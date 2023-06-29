@@ -94,4 +94,44 @@ RSpec.describe DependencyManager do
       expect(manager.all_proposed_dependencies_on_allowlist?).to eq(true)
     end
   end
+
+  describe ".all_proposed_updates_semver_allowed?" do
+    # We don't care about whether or not a given dependency is on the allowlist at this point
+    # - that's covered by the `all_proposed_dependencies_on_allowlist?` check.
+    #  This check should only care about whether a given dependency violates the 'allowed_semver_bumps'
+    # that have been explicitly set in the config. If no such config exists for said
+    # dependency, let's not block it here.
+    it "returns true if a proposed update is missing from the allowlist altogether" do
+      manager = DependencyManager.new
+      manager.propose_dependency_update(name: "foo", previous_version: "1.0.0", next_version: "1.0.1")
+
+      expect(manager.all_proposed_updates_semver_allowed?).to eq(true)
+    end
+
+    it "returns true if a proposed update type matches that on the allowlist" do
+      manager = DependencyManager.new
+      manager.allow_dependency_update(name: "foo", allowed_semver_bumps: %w[patch])
+      manager.propose_dependency_update(name: "foo", previous_version: "1.0.0", next_version: "1.0.1")
+
+      expect(manager.all_proposed_updates_semver_allowed?).to eq(true)
+    end
+
+    it "returns false if a proposed update type does not match that on the allowlist" do
+      manager = DependencyManager.new
+      manager.allow_dependency_update(name: "foo", allowed_semver_bumps: %w[patch])
+      manager.propose_dependency_update(name: "foo", previous_version: "1.0.0", next_version: "1.1.0")
+
+      expect(manager.all_proposed_updates_semver_allowed?).to eq(false)
+    end
+
+    it "returns false if a proposed update type does not match that on the allowlist, even if others do" do
+      manager = DependencyManager.new
+      manager.allow_dependency_update(name: "foo", allowed_semver_bumps: %w[patch minor major])
+      manager.allow_dependency_update(name: "bar", allowed_semver_bumps: %w[patch])
+      manager.propose_dependency_update(name: "foo", previous_version: "1.0.0", next_version: "1.1.0") # allowed
+      manager.propose_dependency_update(name: "bar", previous_version: "1.0.0", next_version: "2.0.0") # not allowed
+
+      expect(manager.all_proposed_updates_semver_allowed?).to eq(false)
+    end
+  end
 end
