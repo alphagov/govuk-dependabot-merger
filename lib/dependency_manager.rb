@@ -14,6 +14,14 @@ class DependencyManager
     proposed_dependency_updates << { name:, previous_version:, next_version: }
   end
 
+  def all_proposed_dependencies_on_allowlist?
+    proposed_dependency_updates.each do |proposed_dependency|
+      return false unless allowed_dependency_updates.find { |dep| dep[:name] == proposed_dependency[:name] }
+    end
+
+    true
+  end
+
   def self.update_type(previous_version, next_version)
     raise SemverException unless [previous_version, next_version].all? { |str| str.match?(/^[0-9]+\.[0-9]+\.[0-9]+$/) }
 
