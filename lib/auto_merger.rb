@@ -19,6 +19,9 @@ class AutoMerger
           puts "...merging! 🎉"
           pr.merge!
         else
+          pr.reasons_not_to_merge.each do |reason|
+            puts "  Not auto-mergeable: #{reason}"
+          end
           puts "...skipping."
         end
       end
