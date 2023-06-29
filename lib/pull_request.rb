@@ -1,12 +1,14 @@
 require "yaml"
+require_relative "./dependency_manager"
 require_relative "./github_client"
 require_relative "./version"
 
 class PullRequest
-  attr_reader :reasons_not_to_merge
+  attr_reader :dependency_manager, :reasons_not_to_merge
 
-  def initialize(api_response)
+  def initialize(api_response, dependency_manager = DependencyManager.new)
     @api_response = api_response
+    @dependency_manager = dependency_manager
     @reasons_not_to_merge = []
   end
 
@@ -21,6 +23,15 @@ class PullRequest
       reasons_not_to_merge << "PR changes files that should not be changed."
     elsif !validate_external_config_file
       reasons_not_to_merge << "The remote .govuk_automerge_config.yml file is missing or in the wrong format."
+    else
+      tell_dependency_manager_what_dependencies_are_allowed
+      tell_dependency_manager_what_dependabot_is_changing
+
+      if !dependency_manager.all_proposed_dependencies_on_allowlist?
+        reasons_not_to_merge << "PR bumps a dependency that is not on the allowlist."
+      elsif !dependency_manager.all_proposed_updates_semver_allowed?
+        reasons_not_to_merge << "PR bumps a dependency to a higher semver than is allowed."
+      end
     end
 
     reasons_not_to_merge.count.zero?
@@ -51,6 +62,14 @@ class PullRequest
 
 private
 
+  def head_commit
+    @head_commit ||= GitHubClient.instance.commit("alphagov/#{@api_response.base.repo.name}", @api_response.head.sha)
+  end
+
+  def gemfile_lock_changes
+    head_commit.files.find { |file| file.filename == "Gemfile.lock" }.patch
+  end
+
   def remote_config
     @remote_config ||= YAML.load(GitHubClient.instance.contents(
                                    "alphagov/#{@api_response.base.repo.name}",
@@ -61,5 +80,29 @@ private
                                  ))
   rescue Octokit::NotFound
     {}
+  end
+
+  def tell_dependency_manager_what_dependencies_are_allowed
+    remote_config["dependabot_auto_merge_config"]["auto_merge"].each do |dependency|
+      dependency_manager.allow_dependency_update(
+        name: dependency["dependency"],
+        allowed_semver_bumps: dependency["allowed_semver_bumps"],
+      )
+    end
+  end
+
+  def tell_dependency_manager_what_dependabot_is_changing
+    lines_removed = gemfile_lock_changes.scan(/^-\s+([a-z\-_]+) \(([0-9.]+)\)$/)
+    lines_added = gemfile_lock_changes.scan(/^\+\s+([a-z\-_]+) \(([0-9.]+)\)$/)
+    previous_dependency_versions = lines_removed.map { |name, version| { name:, version: } }
+    new_dependency_versions = lines_added.map { |name, version| { name:, version: } }
+    new_dependency_versions.each do |new_dependency|
+      previous_dependency = previous_dependency_versions.find { |dep| dep[:name] == new_dependency[:name] }
+      dependency_manager.propose_dependency_update(
+        name: new_dependency[:name],
+        previous_version: previous_dependency[:version],
+        next_version: new_dependency[:version],
+      )
+    end
   end
 end

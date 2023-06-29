@@ -114,12 +114,50 @@ RSpec.describe PullRequest do
       ])
     end
 
-    def create_pull_request_instance
-      pr = PullRequest.new(pull_request_api_response)
+    it "should make a call to DependencyManager.all_proposed_dependencies_on_allowlist?" do
+      stub_remote_allowlist
+      stub_remote_commit(head_commit_api_response)
+      mock_dependency_manager = create_mock_dependency_manager
+
+      allow(mock_dependency_manager).to receive(:all_proposed_dependencies_on_allowlist?).and_return(false)
+      expect(mock_dependency_manager).to receive(:all_proposed_dependencies_on_allowlist?)
+
+      pr = create_pull_request_instance(mock_dependency_manager)
+      pr.is_auto_mergeable?
+      expect(pr.reasons_not_to_merge).to eq([
+        "PR bumps a dependency that is not on the allowlist.",
+      ])
+    end
+
+    it "should make a call to DependencyManager.all_proposed_updates_semver_allowed?" do
+      stub_remote_allowlist
+      stub_remote_commit(head_commit_api_response)
+      mock_dependency_manager = create_mock_dependency_manager
+
+      allow(mock_dependency_manager).to receive(:all_proposed_updates_semver_allowed?).and_return(false)
+      expect(mock_dependency_manager).to receive(:all_proposed_updates_semver_allowed?)
+
+      pr = create_pull_request_instance(mock_dependency_manager)
+      pr.is_auto_mergeable?
+      expect(pr.reasons_not_to_merge).to eq([
+        "PR bumps a dependency to a higher semver than is allowed.",
+      ])
+    end
+
+    def create_pull_request_instance(dependency_manager = DependencyManager.new)
+      pr = PullRequest.new(pull_request_api_response, dependency_manager)
       allow(pr).to receive(:validate_single_commit).and_return(true)
       allow(pr).to receive(:validate_files_changed).and_return(true)
       allow(pr).to receive(:validate_external_config_file).and_return(true)
       pr
+    end
+
+    def create_mock_dependency_manager
+      mock_dependency_manager = double("DependencyManager", all_proposed_dependencies_on_allowlist?: false)
+      allow(mock_dependency_manager).to receive(:allow_dependency_update)
+      allow(mock_dependency_manager).to receive(:propose_dependency_update)
+      allow(mock_dependency_manager).to receive(:all_proposed_dependencies_on_allowlist?).and_return(true)
+      mock_dependency_manager
     end
   end
 
