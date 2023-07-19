@@ -105,6 +105,7 @@ RSpec.describe PullRequest do
     end
 
     it "should make a call to validate_external_config_file" do
+      stub_successful_check_run
       pr = create_pull_request_instance
       allow(pr).to receive(:validate_external_config_file).and_return(false)
       expect(pr).to receive(:validate_external_config_file)
@@ -115,6 +116,7 @@ RSpec.describe PullRequest do
     end
 
     it "should make a call to DependencyManager.all_proposed_dependencies_on_allowlist?" do
+      stub_successful_check_run
       stub_remote_allowlist
       stub_remote_commit(head_commit_api_response)
       mock_dependency_manager = create_mock_dependency_manager
@@ -130,6 +132,7 @@ RSpec.describe PullRequest do
     end
 
     it "should make a call to DependencyManager.all_proposed_updates_semver_allowed?" do
+      stub_successful_check_run
       stub_remote_allowlist
       stub_remote_commit(head_commit_api_response)
       mock_dependency_manager = create_mock_dependency_manager
@@ -141,6 +144,16 @@ RSpec.describe PullRequest do
       pr.is_auto_mergeable?
       expect(pr.reasons_not_to_merge).to eq([
         "PR bumps a dependency to a higher semver than is allowed.",
+      ])
+    end
+
+    it "should make a call to validate_ci_passes" do
+      pr = create_pull_request_instance
+      allow(pr).to receive(:validate_ci_passes).and_return(false)
+      expect(pr).to receive(:validate_ci_passes)
+      pr.is_auto_mergeable?
+      expect(pr.reasons_not_to_merge).to eq([
+        "CI is failing or doesn't exist (should be a GitHub Action with a key called 'test').",
       ])
     end
 
@@ -208,6 +221,26 @@ RSpec.describe PullRequest do
     end
   end
 
+  describe ".validate_ci_passes" do
+    it "returns true if 'test' status check passes'" do
+      stub_successful_check_run
+
+      pr = PullRequest.new(pull_request_api_response)
+      expect(pr.validate_ci_passes).to eq(true)
+    end
+
+    it "returns false if 'test' status check fails" do
+      stub_check_run({
+        name: "test",
+        status: "completed",
+        conclusion: "failure",
+      })
+
+      pr = PullRequest.new(pull_request_api_response)
+      expect(pr.validate_ci_passes).to eq(false)
+    end
+  end
+
   describe ".validate_external_config_file" do
     it "returns false if there is no automerge config file in the repo" do
       stub_request(:get, external_config_file_api_url)
@@ -252,6 +285,24 @@ RSpec.describe PullRequest do
   def stub_remote_commit(head_commit_api_response)
     stub_request(:get, head_commit_api_url)
       .to_return(status: 200, body: head_commit_api_response.to_json, headers: { "Content-Type": "application/json" })
+  end
+
+  def stub_successful_check_run
+    stub_check_run({
+      name: "test",
+      status: "completed",
+      conclusion: "success",
+    })
+  end
+
+  def stub_check_run(run)
+    check_run_api_response = {
+      "total_count": 1,
+      "check_runs": [run],
+    }
+
+    stub_request(:get, "https://api.github.com/repos/alphagov/#{repo_name}/commits/#{sha}/check-runs")
+      .to_return(status: 200, body: check_run_api_response.to_json, headers: { "Content-Type": "application/json" })
   end
 end
 

@@ -1,3 +1,5 @@
+require "json"
+require "net/http"
 require "yaml"
 require_relative "./dependency_manager"
 require_relative "./github_client"
@@ -21,6 +23,8 @@ class PullRequest
       reasons_not_to_merge << "PR contains more than one commit."
     elsif !validate_files_changed
       reasons_not_to_merge << "PR changes files that should not be changed."
+    elsif !validate_ci_passes
+      reasons_not_to_merge << "CI is failing or doesn't exist (should be a GitHub Action with a key called 'test')."
     elsif !validate_external_config_file
       reasons_not_to_merge << "The remote .govuk_automerge_config.yml file is missing or in the wrong format."
     else
@@ -47,6 +51,16 @@ class PullRequest
     files_changed = commit.files.map(&:filename)
     # TODO: support other package managers too (e.g. NPM)
     files_changed == ["Gemfile.lock"]
+  end
+
+  def validate_ci_passes
+    # No method exists for this in Octokit,
+    # so we need to make the API call manually.
+    uri = "https://api.github.com/repos/alphagov/#{@api_response.base.repo.name}/commits/#{@api_response.head.sha}/check-runs"
+    check_runs = JSON.parse(Net::HTTP.get(URI.parse(uri)))["check_runs"]
+    return false unless check_runs && (ci_run = check_runs.find { |run| run["name"] == "test" })
+
+    ci_run["conclusion"] == "success"
   end
 
   def validate_external_config_file
