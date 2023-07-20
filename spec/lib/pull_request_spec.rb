@@ -168,7 +168,8 @@ RSpec.describe PullRequest do
     def create_mock_dependency_manager
       mock_dependency_manager = double("DependencyManager", all_proposed_dependencies_on_allowlist?: false)
       allow(mock_dependency_manager).to receive(:allow_dependency_update)
-      allow(mock_dependency_manager).to receive(:propose_dependency_update)
+      allow(mock_dependency_manager).to receive(:add_dependency)
+      allow(mock_dependency_manager).to receive(:remove_dependency)
       allow(mock_dependency_manager).to receive(:all_proposed_dependencies_on_allowlist?).and_return(true)
       mock_dependency_manager
     end
@@ -293,6 +294,35 @@ RSpec.describe PullRequest do
       stub_request(:post, approval_api_url).to_return(status: 403)
 
       expect { pr.approve! }.to raise_exception(PullRequest::CannotApproveException)
+    end
+  end
+
+  describe ".tell_dependency_manager_what_dependabot_is_changing" do
+    it "parses gemfile lock changes and passes these to DependencyManager" do
+      dependency_manager = double("DependencyManager")
+      api_response = "foo"
+      pull_request = PullRequest.new(api_response, dependency_manager)
+      allow(pull_request).to receive(:gemfile_lock_changes).and_return(
+        <<~GEMFILE_LOCK_DIFF,
+          govuk_personalisation (0.13.0)
+                  plek (>= 1.9.0)
+                  rails (>= 6, < 8)
+          -    govuk_publishing_components (35.7.0)
+          +    govuk_publishing_components (35.8.0)
+                  govuk_app_config
+                  govuk_personalisation (>= 0.7.0)
+                  kramdown
+        GEMFILE_LOCK_DIFF
+      )
+      expect(dependency_manager).to receive(:remove_dependency).with(
+        name: "govuk_publishing_components",
+        version: "35.7.0",
+      )
+      expect(dependency_manager).to receive(:add_dependency).with(
+        name: "govuk_publishing_components",
+        version: "35.8.0",
+      )
+      pull_request.tell_dependency_manager_what_dependabot_is_changing
     end
   end
 

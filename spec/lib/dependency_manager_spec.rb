@@ -49,8 +49,10 @@ RSpec.describe DependencyManager do
   describe ".proposed_dependency_updates" do
     it "returns array of dependencies and semvers that are 'proposed' to be merged" do
       manager = DependencyManager.new
-      manager.propose_dependency_update(name: "foo", previous_version: "1.0.0", next_version: "1.1.0")
-      manager.propose_dependency_update(name: "bar", previous_version: "0.3.0", next_version: "0.3.1")
+      manager.remove_dependency(name: "foo", version: "1.0.0")
+      manager.remove_dependency(name: "bar", version: "0.3.0")
+      manager.add_dependency(name: "foo", version: "1.1.0")
+      manager.add_dependency(name: "bar", version: "0.3.1")
 
       expect(manager.proposed_dependency_updates).to eq([
         {
@@ -65,12 +67,38 @@ RSpec.describe DependencyManager do
         },
       ])
     end
+
+    it "returns proposed dependency update with previous_version set to nil, if dependency added and not removed" do
+      manager = DependencyManager.new
+      manager.add_dependency(name: "foo", version: "1.1.0")
+
+      expect(manager.proposed_dependency_updates).to eq([
+        {
+          name: "foo",
+          previous_version: nil,
+          next_version: "1.1.0",
+        },
+      ])
+    end
+
+    it "returns proposed dependency update with next_version set to nil, if dependency removed and not added" do
+      manager = DependencyManager.new
+      manager.remove_dependency(name: "foo", version: "1.0.0")
+
+      expect(manager.proposed_dependency_updates).to eq([
+        {
+          name: "foo",
+          previous_version: "1.0.0",
+          next_version: nil,
+        },
+      ])
+    end
   end
 
   describe ".all_proposed_dependencies_on_allowlist?" do
     it "returns false if proposed update hasn't been 'allowed' yet" do
       manager = DependencyManager.new
-      manager.propose_dependency_update(name: "foo", previous_version: "1.0.0", next_version: "1.0.1")
+      manager.add_dependency(name: "foo", version: "1.0.0")
 
       expect(manager.all_proposed_dependencies_on_allowlist?).to eq(false)
     end
@@ -78,8 +106,8 @@ RSpec.describe DependencyManager do
     it "returns false if proposed updates contain a dependency that hasn't been 'allowed' yet, amongst ones that have" do
       manager = DependencyManager.new
       manager.allow_dependency_update(name: "foo", allowed_semver_bumps: %w[patch])
-      manager.propose_dependency_update(name: "foo", previous_version: "1.0.0", next_version: "1.0.1")
-      manager.propose_dependency_update(name: "something_not_allowed", previous_version: "1.0.0", next_version: "1.0.1")
+      manager.add_dependency(name: "foo", version: "1.0.0")
+      manager.add_dependency(name: "something_not_allowed", version: "1.0.0")
 
       expect(manager.all_proposed_dependencies_on_allowlist?).to eq(false)
     end
@@ -88,8 +116,10 @@ RSpec.describe DependencyManager do
       manager = DependencyManager.new
       manager.allow_dependency_update(name: "foo", allowed_semver_bumps: %w[patch])
       manager.allow_dependency_update(name: "bar", allowed_semver_bumps: %w[patch])
-      manager.propose_dependency_update(name: "foo", previous_version: "1.0.0", next_version: "1.0.1") # allowed
-      manager.propose_dependency_update(name: "bar", previous_version: "1.0.0", next_version: "2.0.0") # not allowed
+      manager.remove_dependency(name: "foo", version: "1.0.0")
+      manager.remove_dependency(name: "bar", version: "1.0.0")
+      manager.add_dependency(name: "foo", version: "1.0.1") # allowed
+      manager.add_dependency(name: "bar", version: "2.0.0") # not allowed
 
       expect(manager.all_proposed_dependencies_on_allowlist?).to eq(true)
     end
@@ -103,7 +133,7 @@ RSpec.describe DependencyManager do
     # dependency, let's not block it here.
     it "returns true if a proposed update is missing from the allowlist altogether" do
       manager = DependencyManager.new
-      manager.propose_dependency_update(name: "foo", previous_version: "1.0.0", next_version: "1.0.1")
+      manager.add_dependency(name: "foo", version: "1.0.0")
 
       expect(manager.all_proposed_updates_semver_allowed?).to eq(true)
     end
@@ -111,7 +141,8 @@ RSpec.describe DependencyManager do
     it "returns true if a proposed update type matches that on the allowlist" do
       manager = DependencyManager.new
       manager.allow_dependency_update(name: "foo", allowed_semver_bumps: %w[patch])
-      manager.propose_dependency_update(name: "foo", previous_version: "1.0.0", next_version: "1.0.1")
+      manager.remove_dependency(name: "foo", version: "1.0.0")
+      manager.add_dependency(name: "foo", version: "1.0.1")
 
       expect(manager.all_proposed_updates_semver_allowed?).to eq(true)
     end
@@ -119,7 +150,8 @@ RSpec.describe DependencyManager do
     it "returns false if a proposed update type does not match that on the allowlist" do
       manager = DependencyManager.new
       manager.allow_dependency_update(name: "foo", allowed_semver_bumps: %w[patch])
-      manager.propose_dependency_update(name: "foo", previous_version: "1.0.0", next_version: "1.1.0")
+      manager.remove_dependency(name: "foo", version: "1.0.0")
+      manager.add_dependency(name: "foo", version: "1.1.0")
 
       expect(manager.all_proposed_updates_semver_allowed?).to eq(false)
     end
@@ -128,8 +160,10 @@ RSpec.describe DependencyManager do
       manager = DependencyManager.new
       manager.allow_dependency_update(name: "foo", allowed_semver_bumps: %w[patch minor major])
       manager.allow_dependency_update(name: "bar", allowed_semver_bumps: %w[patch])
-      manager.propose_dependency_update(name: "foo", previous_version: "1.0.0", next_version: "1.1.0") # allowed
-      manager.propose_dependency_update(name: "bar", previous_version: "1.0.0", next_version: "2.0.0") # not allowed
+      manager.remove_dependency(name: "foo", version: "1.0.0")
+      manager.remove_dependency(name: "bar", version: "1.0.0")
+      manager.add_dependency(name: "foo", version: "1.1.0") # allowed
+      manager.add_dependency(name: "bar", version: "2.0.0") # not allowed
 
       expect(manager.all_proposed_updates_semver_allowed?).to eq(false)
     end

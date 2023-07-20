@@ -1,17 +1,39 @@
 class DependencyManager
-  attr_reader :allowed_dependency_updates, :proposed_dependency_updates
+  attr_reader :allowed_dependency_updates
 
   def initialize
     @allowed_dependency_updates = []
-    @proposed_dependency_updates = []
+    @dependency_changes = []
   end
 
   def allow_dependency_update(name:, allowed_semver_bumps:)
     allowed_dependency_updates << { name:, allowed_semver_bumps: }
   end
 
-  def propose_dependency_update(name:, previous_version:, next_version:)
-    proposed_dependency_updates << { name:, previous_version:, next_version: }
+  def proposed_dependency_updates
+    @dependency_changes.map(&:name).uniq.map do |name|
+      {
+        name:,
+        previous_version: find_previous_version(name),
+        next_version: find_next_version(name),
+      }
+    end
+  end
+
+  def find_previous_version(dependency_name)
+    @dependency_changes.find { |dep| dep.name == dependency_name && dep.previous_version }&.previous_version
+  end
+
+  def find_next_version(dependency_name)
+    @dependency_changes.find { |dep| dep.name == dependency_name && dep.next_version }&.next_version
+  end
+
+  def add_dependency(name:, version:)
+    @dependency_changes << OpenStruct.new(name:, next_version: version, previous_version: nil)
+  end
+
+  def remove_dependency(name:, version:)
+    @dependency_changes << OpenStruct.new(name:, previous_version: version, next_version: nil)
   end
 
   def all_proposed_dependencies_on_allowlist?
