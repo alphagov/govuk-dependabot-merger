@@ -95,6 +95,20 @@ RSpec.describe DependencyManager do
     end
   end
 
+  describe ".add_dependency and .remove_dependency exception-handling" do
+    it "raises an exception if the same dependency is added twice" do
+      manager = DependencyManager.new
+      manager.add_dependency(name: "foo", version: "1.0.0")
+      expect { manager.add_dependency(name: "foo", version: "1.1.0") }.to raise_exception(DependencyManager::DependencyConflict)
+    end
+
+    it "raises an exception if the same dependency is removed twice" do
+      manager = DependencyManager.new
+      manager.remove_dependency(name: "foo", version: "1.0.0")
+      expect { manager.remove_dependency(name: "foo", version: "1.1.0") }.to raise_exception(DependencyManager::DependencyConflict)
+    end
+  end
+
   describe ".all_proposed_dependencies_on_allowlist?" do
     it "returns false if proposed update hasn't been 'allowed' yet" do
       manager = DependencyManager.new

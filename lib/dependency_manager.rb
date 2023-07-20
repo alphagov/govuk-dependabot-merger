@@ -30,10 +30,21 @@ class DependencyManager
 
   def add_dependency(name:, version:)
     @dependency_changes << OpenStruct.new(name:, next_version: version, previous_version: nil)
+    validate_dependency_changes!
   end
 
   def remove_dependency(name:, version:)
     @dependency_changes << OpenStruct.new(name:, previous_version: version, next_version: nil)
+    validate_dependency_changes!
+  end
+
+  def validate_dependency_changes!
+    @dependency_changes.map(&:name).uniq.each do |name|
+      changes_with_this_name = @dependency_changes.select { |dep| dep.name == name }
+      previous_versions = changes_with_this_name.map(&:previous_version).compact
+      next_versions = changes_with_this_name.map(&:next_version).compact
+      raise DependencyConflict if previous_versions.count > 1 || next_versions.count > 1
+    end
   end
 
   def all_proposed_dependencies_on_allowlist?
@@ -68,5 +79,6 @@ class DependencyManager
     :unchanged
   end
 
+  class DependencyConflict < StandardError; end
   class SemverException < StandardError; end
 end
