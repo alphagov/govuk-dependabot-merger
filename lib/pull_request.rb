@@ -1,11 +1,12 @@
-require "json"
-require "net/http"
+require "httparty"
 require "yaml"
 require_relative "./dependency_manager"
 require_relative "./github_client"
 require_relative "./version"
 
 class PullRequest
+  class CannotApproveException < StandardError; end
+
   attr_reader :dependency_manager, :reasons_not_to_merge
 
   def initialize(api_response, dependency_manager = DependencyManager.new)
@@ -57,7 +58,7 @@ class PullRequest
     # No method exists for this in Octokit,
     # so we need to make the API call manually.
     uri = "https://api.github.com/repos/alphagov/#{@api_response.base.repo.name}/commits/#{@api_response.head.sha}/check-runs"
-    check_runs = JSON.parse(Net::HTTP.get(URI.parse(uri)))["check_runs"]
+    check_runs = HTTParty.get(uri)["check_runs"]
     return false unless check_runs && (ci_run = check_runs.find { |run| run["name"] == "test" })
 
     ci_run["conclusion"] == "success"
@@ -69,8 +70,26 @@ class PullRequest
     true
   end
 
+  def approve!
+    approval_message = <<~REVIEW_COMMENT
+      This PR has been scanned and automatically approved by [github-action-dependabot-auto-merge](https://github.com/alphagov/github-action-dependabot-auto-merge).
+    REVIEW_COMMENT
+    response = HTTParty.post(
+      "https://api.github.com/repos/alphagov/#{@api_response.base.repo.name}/pulls/#{@api_response.number}/reviews",
+      body: {
+        event: "APPROVE",
+        body: approval_message,
+      }.to_json,
+      headers: {
+        "Authorization": "Bearer #{GitHubClient.token}",
+      },
+    )
+    if response.code != 200
+      raise PullRequest::CannotApproveException, "#{response.message}: #{response.body}"
+    end
+  end
+
   def merge!
-    puts "Merging #{@api_response.base.repo.name}##{@api_response.number}..."
     GitHubClient.instance.merge_pull_request("alphagov/#{@api_response.base.repo.name}", @api_response.number)
   end
 

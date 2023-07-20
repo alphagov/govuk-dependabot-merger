@@ -272,12 +272,36 @@ RSpec.describe PullRequest do
     end
   end
 
+  describe ".approve!" do
+    let(:approval_api_url) { "https://api.github.com/repos/alphagov/#{repo_name}/pulls/1/reviews" }
+
+    it "should make an API call to approve the PR" do
+      pr = PullRequest.new(pull_request_api_response)
+      stub_request(:post, approval_api_url).with(
+        body: {
+          "event": "APPROVE",
+          "body": "This PR has been scanned and automatically approved by [github-action-dependabot-auto-merge](https://github.com/alphagov/github-action-dependabot-auto-merge).\n",
+        }.to_json,
+      ).to_return(status: 200)
+
+      pr.approve!
+      expect(WebMock).to have_requested(:post, approval_api_url)
+    end
+
+    it "should raise an exception if request unauthorised" do
+      pr = PullRequest.new(pull_request_api_response)
+      stub_request(:post, approval_api_url).to_return(status: 403)
+
+      expect { pr.approve! }.to raise_exception(PullRequest::CannotApproveException)
+    end
+  end
+
   describe ".merge!" do
-    it "should output the name and PR number" do
+    it "should make an API call to merge the PR" do
       pr = PullRequest.new(pull_request_api_response)
       stub_request(:put, "https://api.github.com/repos/alphagov/#{repo_name}/pulls/1/merge").to_return(status: 200)
 
-      expect { pr.merge! }.to output("Merging foo#1...\n").to_stdout
+      pr.merge!
       expect(WebMock).to have_requested(:put, "https://api.github.com/repos/alphagov/#{repo_name}/pulls/1/merge")
     end
   end
