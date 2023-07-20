@@ -96,6 +96,21 @@ RSpec.describe DependencyManager do
   end
 
   describe ".add_dependency and .remove_dependency exception-handling" do
+    it "raises an exception if dependency is added without a name" do
+      manager = DependencyManager.new
+      expect { manager.add_dependency(name: nil, version: "1.0.0") }.to raise_exception(DependencyManager::InvalidInput)
+    end
+
+    it "raises an exception if dependency is added without a version" do
+      manager = DependencyManager.new
+      expect { manager.add_dependency(name: "foo", version: nil) }.to raise_exception(DependencyManager::InvalidInput)
+    end
+
+    it "raises an exception if dependency is added with a non-semver version" do
+      manager = DependencyManager.new
+      expect { manager.add_dependency(name: "foo", version: "jellyfish") }.to raise_exception(DependencyManager::SemverException)
+    end
+
     it "raises an exception if the same dependency is added twice" do
       manager = DependencyManager.new
       manager.add_dependency(name: "foo", version: "1.0.0")

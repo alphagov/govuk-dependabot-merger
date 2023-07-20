@@ -39,6 +39,15 @@ class DependencyManager
   end
 
   def validate_dependency_changes!
+    raise InvalidInput if @dependency_changes.map(&:name).include?(nil)
+
+    proposed_dependency_updates.each do |update|
+      raise InvalidInput if update[:previous_version].nil? && update[:next_version].nil?
+
+      DependencyManager.validate_semver(update[:previous_version]) if update[:previous_version]
+      DependencyManager.validate_semver(update[:next_version]) if update[:next_version]
+    end
+
     @dependency_changes.map(&:name).uniq.each do |name|
       changes_with_this_name = @dependency_changes.select { |dep| dep.name == name }
       previous_versions = changes_with_this_name.map(&:previous_version).compact
@@ -68,7 +77,7 @@ class DependencyManager
   end
 
   def self.update_type(previous_version, next_version)
-    raise SemverException unless [previous_version, next_version].all? { |str| str.match?(/^[0-9]+\.[0-9]+\.[0-9]+$/) }
+    [previous_version, next_version].each { |version| validate_semver(version) }
 
     prev_major, prev_minor, prev_patch = previous_version.split(".").map(&:to_i)
     next_major, next_minor, next_patch = next_version.split(".").map(&:to_i)
@@ -79,6 +88,11 @@ class DependencyManager
     :unchanged
   end
 
+  def self.validate_semver(str)
+    raise SemverException unless str.match?(/^[0-9]+\.[0-9]+\.[0-9]+$/)
+  end
+
   class DependencyConflict < StandardError; end
+  class InvalidInput < StandardError; end
   class SemverException < StandardError; end
 end
