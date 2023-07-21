@@ -72,7 +72,7 @@ class PullRequest
 
   def approve!
     approval_message = <<~REVIEW_COMMENT
-      This PR has been scanned and automatically approved by [github-action-dependabot-auto-merge](https://github.com/alphagov/github-action-dependabot-auto-merge).
+      This PR has been scanned and automatically approved by [govuk-dependabot-merger](https://github.com/alphagov/govuk-dependabot-merger).
     REVIEW_COMMENT
     response = HTTParty.post(
       "https://api.github.com/repos/alphagov/#{@api_response.base.repo.name}/pulls/#{@api_response.number}/reviews",
