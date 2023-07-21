@@ -1,4 +1,4 @@
-# GitHub Action: Dependabot Automerge
+# GOV.UK Dependabot Merger
 
 > This repository is a **Work In Progress** and should not be used in production.
 
@@ -23,7 +23,7 @@ With that ENV variable created, you can trigger the auto-merge script with:
 bundle exec ruby bin/merge_dependabot_prs.rb
 ```
 
-> The long term aim is to store this token as a repository secret in github-action-dependabot-auto-merge, and trigger the above script on a GitHub Action crob/schedule.
+> The long term aim is to store this token as a repository secret in govuk-dependabot-merger, and trigger the above script on a GitHub Action crob/schedule.
 > Note also that current token is linked to 'chrisbashton' and has permissions against the 'chris-test-repo' only. It will eventually be replaced with a token linked to 'govuk-ci', and with permission against more repositories.
 
 ### Running the test suite

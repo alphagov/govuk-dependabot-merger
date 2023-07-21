@@ -280,7 +280,7 @@ RSpec.describe PullRequest do
       stub_request(:post, approval_api_url).with(
         body: {
           "event": "APPROVE",
-          "body": "This PR has been scanned and automatically approved by [github-action-dependabot-auto-merge](https://github.com/alphagov/github-action-dependabot-auto-merge).\n",
+          "body": "This PR has been scanned and automatically approved by [govuk-dependabot-merger](https://github.com/alphagov/govuk-dependabot-merger).\n",
         }.to_json,
       ).to_return(status: 200)
 
