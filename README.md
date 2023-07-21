@@ -1,30 +1,35 @@
 # GOV.UK Dependabot Merger
 
-> This repository is a **Work In Progress** and should not be used in production.
+> This repository is a **Work In Progress** and should not yet be used in production.
 
-Note that the only GitHub group that has write access to this repository is the GOV.UK Production Admin group.
-We've deliberately avoided giving write access to the GOV.UK Production Deploy group (or similar) as otherwise there is a risk that someone in that group could escalate their own privileges.
+This repository runs a daily GitHub action that automatically approves and merges certain Dependabot PRs for opted-in GOV.UK repos, according to [strict criteria set out in RFC-156](https://github.com/alphagov/govuk-rfcs/blob/main/rfc-156-auto-merge-internal-prs.md), summarised below:
+
+> This service should ONLY be used to merge internal dependencies (excluding 'major' version updates). It should also only be enabled on repos which have sufficient test coverage (such as continuously deployed apps, as these have to reach 95% coverage). Deviate from the guidance at your own risk.
+
+Note that govuk-dependabot-merger will avoid merging a PR if it has a failing GitHub Action CI build called `test`, [as per convention](https://docs.publishing.service.gov.uk/manual/test-and-build-a-project-with-github-actions.html#branch-protection-rules). It will also avoid running altogether on weekends and bank holidays.
+
+## Usage
+
+To opt into the govuk-dependabot-merger service, first create a `.govuk_dependabot_merger.yml` config file at the root of your repository. Configure the file with an array of dependencies and associated semver bumps that you would like the service to merge for you.
+
+For example:
+
+```yaml
+api_version: 1
+auto_merge:
+  - dependency: govuk_publishing_components
+    allowed_semver_bumps:
+      - patch
+      - minor
+  - dependency: rubocop-govuk
+    allowed_semver_bumps:
+      - patch
+      - minor
+```
+
+After you've merged your config file into your main branch, you just need to add your repository to the [config/repos_opted_in.yml](config/repos_opted_in.yml) list in govuk-dependabot-merger.
 
 ## Technical documentation
-
-### Usage
-
-You'll need to create a `AUTO_MERGE_TOKEN` ENV variable, which must be a fine-grained GitHub personal access token with the following permissions:
-
-- Read and write on pull requests
-- Read and write on contents
-- Read on metadata
-- ...the above permissions applied to every repo that we want to enable the auto-merge workflow for.
-  - This could be a manually curated list of repos (GitHub has a limit of 50) or alternatively you could have it apply to every repo or every public repo.
-
-With that ENV variable created, you can trigger the auto-merge script with:
-
-```
-bundle exec ruby bin/merge_dependabot_prs.rb
-```
-
-> The long term aim is to store this token as a repository secret in govuk-dependabot-merger, and trigger the above script on a GitHub Action crob/schedule.
-> Note also that current token is linked to 'chrisbashton' and has permissions against the 'chris-test-repo' only. It will eventually be replaced with a token linked to 'govuk-ci', and with permission against more repositories.
 
 ### Running the test suite
 
@@ -39,6 +44,12 @@ To run the tests:
 ```
 bundle exec rspec
 ```
+
+### Further documentation
+
+- [ADR 1: Limited team access to avoid privilege escalation](./docs/adr/01-limited-team-access.md)
+- [ADR 2: Do not merge subdependency updates](./docs/adr/02-do-not-merge-subdependencies.md)
+- [ADR 3: GitHub Access Token scope](./docs/adr/03-access-token-scope.md)
 
 ## Licence
 
