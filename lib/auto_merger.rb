@@ -16,6 +16,8 @@ class AutoMerger
         puts "Inspecting #{repo.name}##{pr.number}..."
 
         if pr.is_auto_mergeable?
+          puts "...approving! ✅"
+          pr.approve!
           puts "...merging! 🎉"
           pr.merge!
         else

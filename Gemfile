@@ -1,5 +1,6 @@
 source "https://rubygems.org"
 
+gem "httparty"
 gem "octokit"
 
 group :development, :test do
