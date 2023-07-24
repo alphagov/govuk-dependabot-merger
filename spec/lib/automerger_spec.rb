@@ -1,7 +1,7 @@
 require_relative "../../lib/auto_merger"
 
 RSpec.describe AutoMerger do
-  describe "#invoke_merge_script!" do
+  describe ".invoke_merge_script!" do
     it "should fail silently if this is a bank holiday" do
       allow(BankHolidayChecker).to receive(:is_bank_holiday?).and_return(true)
 

@@ -2,7 +2,7 @@ require "octokit"
 require_relative "../../lib/github_client"
 
 RSpec.describe GitHubClient do
-  describe "#instance" do
+  describe ".instance" do
     it "should raise an exception if no `AUTO_MERGE_TOKEN` ENV var provided" do
       ENV["AUTO_MERGE_TOKEN"] = nil
       expect { GitHubClient.instance }.to raise_exception(GitHubAuthException, "AUTO_MERGE_TOKEN missing")
@@ -14,7 +14,7 @@ RSpec.describe GitHubClient do
     end
   end
 
-  describe "#token" do
+  describe ".token" do
     it "should raise an exception if no `AUTO_MERGE_TOKEN` ENV var provided" do
       ENV["AUTO_MERGE_TOKEN"] = nil
       expect { GitHubClient.token }.to raise_exception(GitHubAuthException, "AUTO_MERGE_TOKEN missing")

@@ -3,7 +3,7 @@ require_relative "../../lib/repo"
 RSpec.describe Repo do
   before { set_up_mock_token }
 
-  describe ".name" do
+  describe "#name" do
     it "should return the name of the repo" do
       repo_name = "foo"
       repo = Repo.new(repo_name)
@@ -11,7 +11,7 @@ RSpec.describe Repo do
     end
   end
 
-  describe ".dependabot_pull_requests" do
+  describe "#dependabot_pull_requests" do
     it "should return an array of PullRequest objects" do
       repo_name = "foo"
       stub_request(:get, "https://api.github.com/repos/alphagov/#{repo_name}/pulls?sort=created&state=open")

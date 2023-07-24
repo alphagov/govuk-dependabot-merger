@@ -1,7 +1,7 @@
 require_relative "../../lib/dependency_manager"
 
 RSpec.describe DependencyManager do
-  describe "#update_type" do
+  describe ".update_type" do
     it "returns :unchanged if the two versions are identical" do
       expect(DependencyManager.update_type("0.0.0", "0.0.0")).to eq(:unchanged)
     end
@@ -27,7 +27,7 @@ RSpec.describe DependencyManager do
     end
   end
 
-  describe ".allowed_dependency_updates" do
+  describe "#allowed_dependency_updates" do
     it "returns array of dependencies and semvers that are 'allowed' to be auto-merged" do
       manager = DependencyManager.new
       manager.allow_dependency_update(name: "foo", allowed_semver_bumps: %w[patch minor])
@@ -46,7 +46,7 @@ RSpec.describe DependencyManager do
     end
   end
 
-  describe ".proposed_dependency_updates" do
+  describe "#proposed_dependency_updates" do
     it "returns array of dependencies and semvers that are 'proposed' to be merged" do
       manager = DependencyManager.new
       manager.remove_dependency(name: "foo", version: "1.0.0")
@@ -95,7 +95,7 @@ RSpec.describe DependencyManager do
     end
   end
 
-  describe ".add_dependency and .remove_dependency exception-handling" do
+  describe "#add_dependency and #remove_dependency exception-handling" do
     it "raises an exception if dependency is added without a name" do
       manager = DependencyManager.new
       expect { manager.add_dependency(name: nil, version: "1.0.0") }.to raise_exception(DependencyManager::InvalidInput)
@@ -124,7 +124,7 @@ RSpec.describe DependencyManager do
     end
   end
 
-  describe ".all_proposed_dependencies_on_allowlist?" do
+  describe "#all_proposed_dependencies_on_allowlist?" do
     it "returns false if proposed update hasn't been 'allowed' yet" do
       manager = DependencyManager.new
       manager.add_dependency(name: "foo", version: "1.0.0")
@@ -154,7 +154,7 @@ RSpec.describe DependencyManager do
     end
   end
 
-  describe ".all_proposed_updates_semver_allowed?" do
+  describe "#all_proposed_updates_semver_allowed?" do
     # We don't care about whether or not a given dependency is on the allowlist at this point
     # - that's covered by the `all_proposed_dependencies_on_allowlist?` check.
     #  This check should only care about whether a given dependency violates the 'allowed_semver_bumps'
