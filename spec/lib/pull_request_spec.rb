@@ -9,28 +9,28 @@ RSpec.describe PullRequest do
   let(:pull_request_api_response) do
     # Using OpenStruct to make each property callable as a method,
     # just like OctoKit
-    OpenStruct.new({
+    OpenStruct.new(
       url: "https://api.github.com/repos/alphagov/#{repo_name}/pulls/1",
       number: 1,
       state: "open",
       title: "First PR",
-      user: OpenStruct.new({
+      user: OpenStruct.new(
         login: "ChrisBAshton",
         id: 5_111_927,
         type: "User",
-      }),
+      ),
       labels: [],
       draft: false,
       statuses_url: "https://api.github.com/repos/alphagov/#{repo_name}/statuses/#{sha}",
-      head: OpenStruct.new({
+      head: OpenStruct.new(
         sha:,
-      }),
-      base: OpenStruct.new({
-        repo: OpenStruct.new({
+      ),
+      base: OpenStruct.new(
+        repo: OpenStruct.new(
           name: repo_name,
-        }),
-      }),
-    })
+        ),
+      ),
+    )
   end
   let(:head_commit_api_url) { "https://api.github.com/repos/alphagov/#{repo_name}/commits/#{sha}" }
   let(:head_commit_api_response) do
@@ -70,20 +70,20 @@ RSpec.describe PullRequest do
   end
   let(:external_config_file_api_url) { "https://api.github.com/repos/alphagov/#{repo_name}/contents/.govuk_automerge_config.yml" }
 
-  describe ".initialize" do
+  describe "#initialize" do
     it "should take a GitHub API response shaped pull request" do
       PullRequest.new(pull_request_api_response)
     end
   end
 
-  describe ".number" do
+  describe "#number" do
     it "should return the number of the PR" do
       pr = PullRequest.new(pull_request_api_response)
       expect(pr.number).to eq(1)
     end
   end
 
-  describe ".is_auto_mergeable?" do
+  describe "#is_auto_mergeable?" do
     it "should make a call to validate_single_commit" do
       pr = create_pull_request_instance
       allow(pr).to receive(:validate_single_commit).and_return(false)
@@ -168,13 +168,14 @@ RSpec.describe PullRequest do
     def create_mock_dependency_manager
       mock_dependency_manager = double("DependencyManager", all_proposed_dependencies_on_allowlist?: false)
       allow(mock_dependency_manager).to receive(:allow_dependency_update)
-      allow(mock_dependency_manager).to receive(:propose_dependency_update)
+      allow(mock_dependency_manager).to receive(:add_dependency)
+      allow(mock_dependency_manager).to receive(:remove_dependency)
       allow(mock_dependency_manager).to receive(:all_proposed_dependencies_on_allowlist?).and_return(true)
       mock_dependency_manager
     end
   end
 
-  describe ".validate_single_commit" do
+  describe "#validate_single_commit" do
     let(:commit_response) do
       {
         sha: "abc123",
@@ -204,7 +205,7 @@ RSpec.describe PullRequest do
     end
   end
 
-  describe ".validate_files_changed" do
+  describe "#validate_files_changed" do
     it "returns true if PR only changes Gemfile.lock" do
       stub_remote_commit(head_commit_api_response)
 
@@ -221,7 +222,7 @@ RSpec.describe PullRequest do
     end
   end
 
-  describe ".validate_ci_passes" do
+  describe "#validate_ci_passes" do
     it "returns true if 'test' status check passes'" do
       stub_successful_check_run
 
@@ -241,7 +242,7 @@ RSpec.describe PullRequest do
     end
   end
 
-  describe ".validate_external_config_file" do
+  describe "#validate_external_config_file" do
     it "returns false if there is no automerge config file in the repo" do
       stub_request(:get, external_config_file_api_url)
         .to_return(status: 404)
@@ -272,7 +273,7 @@ RSpec.describe PullRequest do
     end
   end
 
-  describe ".approve!" do
+  describe "#approve!" do
     let(:approval_api_url) { "https://api.github.com/repos/alphagov/#{repo_name}/pulls/1/reviews" }
 
     it "should make an API call to approve the PR" do
@@ -296,7 +297,36 @@ RSpec.describe PullRequest do
     end
   end
 
-  describe ".merge!" do
+  describe "#tell_dependency_manager_what_dependabot_is_changing" do
+    it "parses gemfile lock changes and passes these to DependencyManager" do
+      dependency_manager = double("DependencyManager")
+      api_response = "foo"
+      pull_request = PullRequest.new(api_response, dependency_manager)
+      allow(pull_request).to receive(:gemfile_lock_changes).and_return(
+        <<~GEMFILE_LOCK_DIFF,
+          govuk_personalisation (0.13.0)
+                  plek (>= 1.9.0)
+                  rails (>= 6, < 8)
+          -    govuk_publishing_components (35.7.0)
+          +    govuk_publishing_components (35.8.0)
+                  govuk_app_config
+                  govuk_personalisation (>= 0.7.0)
+                  kramdown
+        GEMFILE_LOCK_DIFF
+      )
+      expect(dependency_manager).to receive(:remove_dependency).with(
+        name: "govuk_publishing_components",
+        version: "35.7.0",
+      )
+      expect(dependency_manager).to receive(:add_dependency).with(
+        name: "govuk_publishing_components",
+        version: "35.8.0",
+      )
+      pull_request.tell_dependency_manager_what_dependabot_is_changing
+    end
+  end
+
+  describe "#merge!" do
     it "should make an API call to merge the PR" do
       pr = PullRequest.new(pull_request_api_response)
       stub_request(:put, "https://api.github.com/repos/alphagov/#{repo_name}/pulls/1/merge").to_return(status: 200)

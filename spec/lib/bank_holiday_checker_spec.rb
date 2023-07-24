@@ -26,7 +26,7 @@ RSpec.describe BankHolidayChecker do
       .to_return(status: 200, body: example_bank_holiday_data.to_json)
   end
 
-  describe "#is_bank_holiday?" do
+  describe ".is_bank_holiday?" do
     it "should return true if today is a bank holiday" do
       bank_holiday_date = Time.local(2018, 0o3, 30, 10, 5, 0)
       Timecop.freeze(bank_holiday_date) do

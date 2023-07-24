@@ -93,8 +93,6 @@ class PullRequest
     GitHubClient.instance.merge_pull_request("alphagov/#{@api_response.base.repo.name}", @api_response.number)
   end
 
-private
-
   def head_commit
     @head_commit ||= GitHubClient.instance.commit("alphagov/#{@api_response.base.repo.name}", @api_response.head.sha)
   end
@@ -127,15 +125,12 @@ private
   def tell_dependency_manager_what_dependabot_is_changing
     lines_removed = gemfile_lock_changes.scan(/^-\s+([a-z\-_]+) \(([0-9.]+)\)$/)
     lines_added = gemfile_lock_changes.scan(/^\+\s+([a-z\-_]+) \(([0-9.]+)\)$/)
-    previous_dependency_versions = lines_removed.map { |name, version| { name:, version: } }
-    new_dependency_versions = lines_added.map { |name, version| { name:, version: } }
-    new_dependency_versions.each do |new_dependency|
-      previous_dependency = previous_dependency_versions.find { |dep| dep[:name] == new_dependency[:name] }
-      dependency_manager.propose_dependency_update(
-        name: new_dependency[:name],
-        previous_version: previous_dependency[:version],
-        next_version: new_dependency[:version],
-      )
+
+    lines_removed.each do |name, version|
+      dependency_manager.remove_dependency(name:, version:)
+    end
+    lines_added.each do |name, version|
+      dependency_manager.add_dependency(name:, version:)
     end
   end
 end
