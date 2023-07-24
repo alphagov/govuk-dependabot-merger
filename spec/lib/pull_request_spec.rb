@@ -9,28 +9,28 @@ RSpec.describe PullRequest do
   let(:pull_request_api_response) do
     # Using OpenStruct to make each property callable as a method,
     # just like OctoKit
-    OpenStruct.new({
+    OpenStruct.new(
       url: "https://api.github.com/repos/alphagov/#{repo_name}/pulls/1",
       number: 1,
       state: "open",
       title: "First PR",
-      user: OpenStruct.new({
+      user: OpenStruct.new(
         login: "ChrisBAshton",
         id: 5_111_927,
         type: "User",
-      }),
+      ),
       labels: [],
       draft: false,
       statuses_url: "https://api.github.com/repos/alphagov/#{repo_name}/statuses/#{sha}",
-      head: OpenStruct.new({
+      head: OpenStruct.new(
         sha:,
-      }),
-      base: OpenStruct.new({
-        repo: OpenStruct.new({
+      ),
+      base: OpenStruct.new(
+        repo: OpenStruct.new(
           name: repo_name,
-        }),
-      }),
-    })
+        ),
+      ),
+    )
   end
   let(:head_commit_api_url) { "https://api.github.com/repos/alphagov/#{repo_name}/commits/#{sha}" }
   let(:head_commit_api_response) do
