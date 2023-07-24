@@ -68,7 +68,7 @@ RSpec.describe PullRequest do
       ],
     }
   end
-  let(:external_config_file_api_url) { "https://api.github.com/repos/alphagov/#{repo_name}/contents/.govuk_automerge_config.yml" }
+  let(:external_config_file_api_url) { "https://api.github.com/repos/alphagov/#{repo_name}/contents/.govuk_dependabot_merger.yml" }
 
   describe "#initialize" do
     it "should take a GitHub API response shaped pull request" do
@@ -111,7 +111,7 @@ RSpec.describe PullRequest do
       expect(pr).to receive(:validate_external_config_file)
       pr.is_auto_mergeable?
       expect(pr.reasons_not_to_merge).to eq([
-        "The remote .govuk_automerge_config.yml file is missing or in the wrong format.",
+        "The remote .govuk_dependabot_merger.yml file is missing or in the wrong format.",
       ])
     end
 
@@ -253,9 +253,8 @@ RSpec.describe PullRequest do
 
     it "returns false if the automerge config file is on a different version" do
       contents_api_response = <<~EXTERNAL_CONFIG_YAML
-        dependabot_auto_merge_config:
-          api_version: -1
-          foo: bar
+        api_version: -1
+        foo: bar
       EXTERNAL_CONFIG_YAML
 
       stub_request(:get, external_config_file_api_url)
@@ -362,17 +361,16 @@ end
 
 def stub_remote_allowlist
   contents_api_response = <<~EXTERNAL_CONFIG_YAML
-    dependabot_auto_merge_config:
-      api_version: 0 # still feeling out the API. Experimental. This file is subject to change.
-      auto_merge:
-        - dependency: govuk_publishing_components
-          allowed_semver_bumps:
-            - patch
-            - minor
-        - dependency: rubocop-govuk
-          allowed_semver_bumps:
-            - patch
-            - minor
+    api_version: 1
+    auto_merge:
+      - dependency: govuk_publishing_components
+        allowed_semver_bumps:
+          - patch
+          - minor
+      - dependency: rubocop-govuk
+        allowed_semver_bumps:
+          - patch
+          - minor
   EXTERNAL_CONFIG_YAML
 
   stub_request(:get, external_config_file_api_url)

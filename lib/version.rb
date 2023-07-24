@@ -1,3 +1,3 @@
 module DependabotAutoMerge
-  VERSION = 0
+  VERSION = 1
 end
