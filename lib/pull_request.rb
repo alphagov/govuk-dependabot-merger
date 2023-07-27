@@ -27,7 +27,7 @@ class PullRequest
     elsif !validate_ci_passes
       reasons_not_to_merge << "CI is failing or doesn't exist (should be a GitHub Action with a key called 'test')."
     elsif !validate_external_config_file
-      reasons_not_to_merge << "The remote .govuk_automerge_config.yml file is missing or in the wrong format."
+      reasons_not_to_merge << "The remote .govuk_dependabot_merger.yml file is missing or in the wrong format."
     else
       tell_dependency_manager_what_dependencies_are_allowed
       tell_dependency_manager_what_dependabot_is_changing
@@ -65,7 +65,7 @@ class PullRequest
   end
 
   def validate_external_config_file
-    return false unless remote_config.dig("dependabot_auto_merge_config", "api_version") == DependabotAutoMerge::VERSION
+    return false unless remote_config["api_version"] == DependabotAutoMerge::VERSION
 
     true
   end
@@ -106,7 +106,7 @@ class PullRequest
                                    "alphagov/#{@api_response.base.repo.name}",
                                    {
                                      accept: "application/vnd.github.raw",
-                                     path: ".govuk_automerge_config.yml",
+                                     path: ".govuk_dependabot_merger.yml",
                                    },
                                  ))
   rescue Octokit::NotFound
@@ -114,7 +114,7 @@ class PullRequest
   end
 
   def tell_dependency_manager_what_dependencies_are_allowed
-    remote_config["dependabot_auto_merge_config"]["auto_merge"].each do |dependency|
+    remote_config["auto_merge"].each do |dependency|
       dependency_manager.allow_dependency_update(
         name: dependency["dependency"],
         allowed_semver_bumps: dependency["allowed_semver_bumps"],
