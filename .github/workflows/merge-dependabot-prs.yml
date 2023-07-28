@@ -1,0 +1,25 @@
+name: "Merge Dependabot PRs"
+
+on:
+  schedule:
+    # 10:30am, Mon-Fri. There is also logic within the script to prevent running on bank holidays.
+    - cron: '30 10 * * 1-5'
+  workflow_dispatch: {}
+
+jobs:
+  review-users:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: Run Dependabot-merger script
+        env:
+          AUTO_MERGE_TOKEN: ${{ secrets.AUTO_MERGE_TOKEN }}
+        run: |
+          bundle exec ruby bin/merge_dependabot_prs.rb
