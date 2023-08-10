@@ -197,4 +197,38 @@ RSpec.describe DependencyManager do
       expect(manager.all_proposed_updates_semver_allowed?).to eq(false)
     end
   end
+
+  describe "#all_proposed_dependencies_are_internal?" do
+    it "returns false if a proposed dependency update is externally owned" do
+      stub_request(:get, "https://rubygems.org/api/v1/gems/foo/owners.yaml")
+        .to_return(
+          status: 200,
+          body: <<~GEM_OWNERS,
+            - id: 123
+              handle: some-malicious-actor
+          GEM_OWNERS
+        )
+
+      manager = DependencyManager.new
+      manager.add_dependency(name: "foo", version: "1.0.0")
+
+      expect(manager.all_proposed_dependencies_are_internal?).to eq(false)
+    end
+
+    it "returns false if a proposed dependency update is owned by govuk" do
+      stub_request(:get, "https://rubygems.org/api/v1/gems/foo/owners.yaml")
+        .to_return(
+          status: 200,
+          body: <<~GEM_OWNERS,
+            - id: 59597
+              handle: govuk
+          GEM_OWNERS
+        )
+
+      manager = DependencyManager.new
+      manager.add_dependency(name: "foo", version: "1.0.0")
+
+      expect(manager.all_proposed_dependencies_are_internal?).to eq(true)
+    end
+  end
 end
