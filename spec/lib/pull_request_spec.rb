@@ -147,6 +147,22 @@ RSpec.describe PullRequest do
       ])
     end
 
+    it "should make a call to DependencyManager.all_proposed_dependencies_are_internal?" do
+      stub_successful_check_run
+      stub_remote_allowlist
+      stub_remote_commit(head_commit_api_response)
+      mock_dependency_manager = create_mock_dependency_manager
+
+      allow(mock_dependency_manager).to receive(:all_proposed_dependencies_are_internal?).and_return(false)
+      expect(mock_dependency_manager).to receive(:all_proposed_dependencies_are_internal?)
+
+      pr = create_pull_request_instance(mock_dependency_manager)
+      pr.is_auto_mergeable?
+      expect(pr.reasons_not_to_merge).to eq([
+        "PR bumps an external dependency.",
+      ])
+    end
+
     it "should make a call to validate_ci_passes" do
       pr = create_pull_request_instance
       allow(pr).to receive(:validate_ci_passes).and_return(false)
@@ -171,6 +187,7 @@ RSpec.describe PullRequest do
       allow(mock_dependency_manager).to receive(:add_dependency)
       allow(mock_dependency_manager).to receive(:remove_dependency)
       allow(mock_dependency_manager).to receive(:all_proposed_dependencies_on_allowlist?).and_return(true)
+      allow(mock_dependency_manager).to receive(:all_proposed_updates_semver_allowed?).and_return(true)
       mock_dependency_manager
     end
   end

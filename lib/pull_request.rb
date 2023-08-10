@@ -36,6 +36,8 @@ class PullRequest
         reasons_not_to_merge << "PR bumps a dependency that is not on the allowlist."
       elsif !dependency_manager.all_proposed_updates_semver_allowed?
         reasons_not_to_merge << "PR bumps a dependency to a higher semver than is allowed."
+      elsif !dependency_manager.all_proposed_dependencies_are_internal?
+        reasons_not_to_merge << "PR bumps an external dependency."
       end
     end
 
