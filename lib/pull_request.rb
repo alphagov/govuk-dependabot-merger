@@ -99,6 +99,10 @@ class PullRequest
     @head_commit ||= GitHubClient.instance.commit("alphagov/#{@api_response.base.repo.name}", @api_response.head.sha)
   end
 
+  def commit_message
+    head_commit.commit.message
+  end
+
   def gemfile_lock_changes
     head_commit.files.find { |file| file.filename == "Gemfile.lock" }.patch
   end
@@ -125,14 +129,19 @@ class PullRequest
   end
 
   def tell_dependency_manager_what_dependabot_is_changing
+    dependency_updates = commit_message.scan(/(?:Bump|Updates) `?(\w+)`? from (\d+\.\d+\.\d+) to (\d+\.\d+\.\d+)/)
+
+    mentioned_dependencies = dependency_updates.to_h { |name, from_version, to_version| [name, { from_version:, to_version: }] }
+
     lines_removed = gemfile_lock_changes.scan(/^-\s+([a-z\-_]+) \(([0-9.]+)\)$/)
     lines_added = gemfile_lock_changes.scan(/^\+\s+([a-z\-_]+) \(([0-9.]+)\)$/)
 
     lines_removed.each do |name, version|
-      dependency_manager.remove_dependency(name:, version:)
+      dependency_manager.remove_dependency(name:, version:) if mentioned_dependencies[name]&.fetch(:from_version) == version
     end
+
     lines_added.each do |name, version|
-      dependency_manager.add_dependency(name:, version:)
+      dependency_manager.add_dependency(name:, version:) if mentioned_dependencies[name]&.fetch(:to_version) == version
     end
   end
 end
