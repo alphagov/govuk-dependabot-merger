@@ -1,5 +1,7 @@
 # ADR 2: Do not merge subdependency updates
 
+> EDIT: this is superseded by [ADR 4](./04-ignore-subdependencies.md).
+
 Date: 2023-07-24
 
 ## Context
