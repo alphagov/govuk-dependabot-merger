@@ -471,7 +471,7 @@ RSpec.describe PullRequest do
 
   def stub_successful_check_run
     stub_check_run({
-      name: "test",
+      name: "Test Ruby",
       status: "completed",
       conclusion: "success",
     })
