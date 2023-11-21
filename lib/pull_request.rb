@@ -61,7 +61,7 @@ class PullRequest
     # so we need to make the API call manually.
     uri = "https://api.github.com/repos/alphagov/#{@api_response.base.repo.name}/commits/#{@api_response.head.sha}/check-runs"
     check_runs = HTTParty.get(uri)["check_runs"]
-    return false unless check_runs && (ci_run = check_runs.find { |run| run["name"] == "test" })
+    return false unless check_runs && (ci_run = check_runs.find { |run| run["name"] == "Test Ruby" })
 
     ci_run["conclusion"] == "success"
   end
