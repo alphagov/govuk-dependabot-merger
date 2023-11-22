@@ -93,6 +93,8 @@ class PullRequest
 
   def merge!
     GitHubClient.instance.merge_pull_request("alphagov/#{@api_response.base.repo.name}", @api_response.number)
+  rescue Octokit::Error => e
+    puts "Error merging pull request: #{e.message}"
   end
 
   def head_commit
