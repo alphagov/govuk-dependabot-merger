@@ -225,7 +225,7 @@ RSpec.describe PullRequest do
       expect(pr).to receive(:validate_ci_passes)
       pr.is_auto_mergeable?
       expect(pr.reasons_not_to_merge).to eq([
-        "CI is failing or doesn't exist (should be a GitHub Action with a key called 'test').",
+        "CI is failing or doesn't exist (should be a GitHub Action with a key called 'Test Ruby').",
       ])
     end
 
@@ -296,16 +296,16 @@ RSpec.describe PullRequest do
   end
 
   describe "#validate_ci_passes" do
-    it "returns true if 'test' status check passes'" do
+    it "returns true if 'Test Ruby' status check passes'" do
       stub_successful_check_run
 
       pr = PullRequest.new(pull_request_api_response)
       expect(pr.validate_ci_passes).to eq(true)
     end
 
-    it "returns false if 'test' status check fails" do
+    it "returns false if 'Test Ruby' status check fails" do
       stub_check_run({
-        name: "test",
+        name: "Test Ruby",
         status: "completed",
         conclusion: "failure",
       })
