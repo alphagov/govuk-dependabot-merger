@@ -81,7 +81,7 @@ class DependencyManager
   def all_proposed_dependencies_are_internal?
     proposed_dependency_updates.each do |proposed_update|
       uri = "https://rubygems.org/api/v1/gems/#{proposed_update[:name]}/owners.yaml"
-      gem_owners = YAML.load(HTTParty.get(uri))
+      gem_owners = YAML.safe_load(HTTParty.get(uri))
       return false unless gem_owners.map { |owner| owner["handle"] }.include?("govuk")
     end
 

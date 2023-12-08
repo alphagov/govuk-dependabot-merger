@@ -110,7 +110,7 @@ class PullRequest
   end
 
   def remote_config
-    @remote_config ||= YAML.load(GitHubClient.instance.contents(
+    @remote_config ||= YAML.safe_load(GitHubClient.instance.contents(
                                    "alphagov/#{@api_response.base.repo.name}",
                                    {
                                      accept: "application/vnd.github.raw",
