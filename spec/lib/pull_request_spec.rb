@@ -236,7 +236,7 @@ RSpec.describe PullRequest do
       expect(pr).to receive(:validate_ci_passes)
       pr.is_auto_mergeable?
       expect(pr.reasons_not_to_merge).to eq([
-        "CI is failing or doesn't exist (should be a GitHub Action with a key called 'Test Ruby').",
+        "At least one of the 'CI' GitHub Action workflow jobs is failing.",
       ])
     end
 
@@ -327,18 +327,29 @@ RSpec.describe PullRequest do
   end
 
   describe "#validate_ci_passes" do
-    it "returns true if 'Test Ruby' status check passes'" do
+    it "returns true if all of the jobs described by the 'CI' workflow are passing" do
       stub_successful_check_run
 
       pr = PullRequest.new(pull_request_api_response)
       expect(pr.validate_ci_passes).to eq(true)
     end
 
-    it "returns false if 'Test Ruby' status check fails" do
+    it "returns false if any of the jobs described by the 'CI' workflow are failing" do
       stub_check_run({
         name: "Test Ruby",
         status: "completed",
         conclusion: "failure",
+      })
+
+      pr = PullRequest.new(pull_request_api_response)
+      expect(pr.validate_ci_passes).to eq(false)
+    end
+
+    it "returns false if any of the jobs described by the 'CI' workflow are missing" do
+      stub_check_run({
+        name: "Some other test - notably, no 'Test Ruby'",
+        status: "completed",
+        conclusion: "success",
       })
 
       pr = PullRequest.new(pull_request_api_response)
@@ -540,6 +551,20 @@ RSpec.describe PullRequest do
     }
     stub_request(:get, "https://api.github.com/repos/alphagov/#{repo_name}/actions/workflows")
       .to_return(status: 200, body: workflows.to_json, headers: { "Content-Type": "application/json" })
+
+    ci_workflow_file = <<~CI_WORKFLOW_YAML
+      name: CI
+
+      jobs:
+        test-ruby:
+          name: Test Ruby
+          steps:
+            - name: Run RSpec
+              run: bundle exec rake spec
+    CI_WORKFLOW_YAML
+
+    stub_request(:get, "https://api.github.com/repos/alphagov/#{repo_name}/contents/.github/workflows/ci.yml")
+      .to_return(status: 200, body: ci_workflow_file.to_json, headers: { "Content-Type": "application/json" })
   end
 end
 

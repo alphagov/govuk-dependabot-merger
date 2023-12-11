@@ -27,7 +27,7 @@ class PullRequest
     elsif !validate_ci_workflow_exists
       reasons_not_to_merge << "Repo lacks a GitHub Action workflow named 'CI'."
     elsif !validate_ci_passes
-      reasons_not_to_merge << "CI is failing or doesn't exist (should be a GitHub Action with a key called 'Test Ruby')."
+      reasons_not_to_merge << "At least one of the 'CI' GitHub Action workflow jobs is failing."
     elsif !validate_external_config_file
       reasons_not_to_merge << "The remote .govuk_dependabot_merger.yml file is missing or in the wrong format."
     else
@@ -59,9 +59,7 @@ class PullRequest
   end
 
   def validate_ci_workflow_exists
-    workflows = GitHubClient.instance.workflows("alphagov/#{@api_response.base.repo.name}")
-    ci_workflow = workflows[:workflows].find { |workflow| workflow["name"] == "CI" }
-    ci_workflow.nil? ? false : true
+    path_to_ci_workflow.nil? ? false : true
   end
 
   def validate_ci_passes
@@ -69,9 +67,24 @@ class PullRequest
     # so we need to make the API call manually.
     uri = "https://api.github.com/repos/alphagov/#{@api_response.base.repo.name}/commits/#{@api_response.head.sha}/check-runs"
     check_runs = HTTParty.get(uri)["check_runs"]
-    return false unless check_runs && (ci_run = check_runs.find { |run| run["name"] == "Test Ruby" })
 
-    ci_run["conclusion"] == "success"
+    ci_workflow_config = YAML.safe_load(GitHubClient.instance.contents(
+                                        "alphagov/#{@api_response.base.repo.name}",
+                                        {
+                                          accept: "application/vnd.github.raw",
+                                          path: path_to_ci_workflow,
+                                        },
+                                      ))
+
+    ci_workflow_config["jobs"].each do |job_id, job_config|
+      corresponding_job = check_runs.find { |run| run["name"] == job_config["name"] }
+
+      if corresponding_job.nil? || corresponding_job["conclusion"] != "success"
+        return false
+      end
+    end
+
+    true
   end
 
   def validate_external_config_file
@@ -153,5 +166,13 @@ class PullRequest
     lines_added.each do |name, version|
       dependency_manager.add_dependency(name:, version:) if mentioned_dependencies[name]&.fetch(:to_version) == version
     end
+  end
+
+  private
+
+  def path_to_ci_workflow
+    workflows = GitHubClient.instance.workflows("alphagov/#{@api_response.base.repo.name}")
+    ci_workflow = workflows[:workflows].find { |workflow| workflow["name"] == "CI" }
+    ci_workflow.nil? ? nil : ci_workflow[:path]
   end
 end
