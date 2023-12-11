@@ -24,6 +24,8 @@ class PullRequest
       reasons_not_to_merge << "PR contains more than one commit."
     elsif !validate_files_changed
       reasons_not_to_merge << "PR changes files that should not be changed."
+    elsif !validate_ci_workflow_exists
+      reasons_not_to_merge << "Repo lacks a GitHub Action workflow named 'CI'."
     elsif !validate_ci_passes
       reasons_not_to_merge << "CI is failing or doesn't exist (should be a GitHub Action with a key called 'Test Ruby')."
     elsif !validate_external_config_file

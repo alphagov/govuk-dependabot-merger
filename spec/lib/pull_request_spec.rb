@@ -219,7 +219,18 @@ RSpec.describe PullRequest do
       ])
     end
 
+    it "should make a call to validate_ci_workflow_exists" do
+      pr = create_pull_request_instance
+      allow(pr).to receive(:validate_ci_workflow_exists).and_return(false)
+      expect(pr).to receive(:validate_ci_workflow_exists)
+      pr.is_auto_mergeable?
+      expect(pr.reasons_not_to_merge).to eq([
+        "Repo lacks a GitHub Action workflow named 'CI'.",
+      ])
+    end
+
     it "should make a call to validate_ci_passes" do
+      stub_successful_workflow_check
       pr = create_pull_request_instance
       allow(pr).to receive(:validate_ci_passes).and_return(false)
       expect(pr).to receive(:validate_ci_passes)
