@@ -56,6 +56,12 @@ class PullRequest
     files_changed == ["Gemfile.lock"]
   end
 
+  def validate_ci_workflow_exists
+    workflows = GitHubClient.instance.workflows("alphagov/#{@api_response.base.repo.name}")
+    ci_workflow = workflows[:workflows].find { |workflow| workflow["name"] == "CI" }
+    ci_workflow.nil? ? false : true
+  end
+
   def validate_ci_passes
     # No method exists for this in Octokit,
     # so we need to make the API call manually.

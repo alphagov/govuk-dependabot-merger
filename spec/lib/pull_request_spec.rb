@@ -295,6 +295,26 @@ RSpec.describe PullRequest do
     end
   end
 
+  describe "#validate_ci_workflow_exists" do
+    it "returns true if repo has a workflow named 'CI'" do
+      stub_successful_workflow_check
+      pr = PullRequest.new(pull_request_api_response)
+      expect(pr.validate_ci_workflow_exists).to eq(true)
+    end
+
+    it "returns false if repo lacks a workflow named 'CI" do
+      workflows = {
+        "total_count": 0,
+        "workflows": [],
+      }
+      stub_request(:get, "https://api.github.com/repos/alphagov/#{repo_name}/actions/workflows")
+        .to_return(status: 200, body: workflows.to_json, headers: { "Content-Type": "application/json" })
+
+      pr = PullRequest.new(pull_request_api_response)
+      expect(pr.validate_ci_workflow_exists).to eq(false)
+    end
+  end
+
   describe "#validate_ci_passes" do
     it "returns true if 'Test Ruby' status check passes'" do
       stub_successful_check_run
@@ -470,6 +490,7 @@ RSpec.describe PullRequest do
   end
 
   def stub_successful_check_run
+    stub_successful_workflow_check
     stub_check_run({
       name: "Test Ruby",
       status: "completed",
@@ -478,6 +499,7 @@ RSpec.describe PullRequest do
   end
 
   def stub_check_run(run)
+    stub_successful_workflow_check
     check_run_api_response = {
       "total_count": 1,
       "check_runs": [run],
@@ -485,6 +507,28 @@ RSpec.describe PullRequest do
 
     stub_request(:get, "https://api.github.com/repos/alphagov/#{repo_name}/commits/#{sha}/check-runs")
       .to_return(status: 200, body: check_run_api_response.to_json, headers: { "Content-Type": "application/json" })
+  end
+
+  def stub_successful_workflow_check
+    workflows = {
+      "total_count": 1,
+      "workflows": [
+        {
+          "id": 123,
+          "node_id": "A_ABCD_x123",
+          "name": "CI",
+          "path": ".github/workflows/ci.yml",
+          "state": "active",
+          "created_at": "2023-01-03T16:22:01.000Z",
+          "updated_at": "2023-05-11T12:26:57.000Z",
+          "url": "https://api.github.com/repos/alphagov/#{repo_name}/actions/workflows/12345",
+          "html_url": "https://github.com/alphagov/#{repo_name}/blob/main/.github/workflows/ci.yml",
+          "badge_url": "https://github.com/alphagov/#{repo_name}/workflows/CI/badge.svg",
+        },
+      ],
+    }
+    stub_request(:get, "https://api.github.com/repos/alphagov/#{repo_name}/actions/workflows")
+      .to_return(status: 200, body: workflows.to_json, headers: { "Content-Type": "application/json" })
   end
 end
 
