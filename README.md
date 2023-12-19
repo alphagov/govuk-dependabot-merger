@@ -1,12 +1,10 @@
 # GOV.UK Dependabot Merger
 
-> This repository is a **Work In Progress** and should not yet be used in production.
-
 This repository runs a daily GitHub action that automatically approves and merges certain Dependabot PRs for opted-in GOV.UK repos, according to [strict criteria set out in RFC-156](https://github.com/alphagov/govuk-rfcs/blob/main/rfc-156-auto-merge-internal-prs.md), summarised below:
 
 > This service should ONLY be used to merge internal dependencies (excluding 'major' version updates). It should also only be enabled on repos which have sufficient test coverage (such as continuously deployed apps, as these have to reach 95% coverage). Deviate from the guidance at your own risk.
 
-Note that govuk-dependabot-merger will avoid merging a PR if it has a failing GitHub Action CI build called `test`, [as per convention](https://docs.publishing.service.gov.uk/manual/test-and-build-a-project-with-github-actions.html#branch-protection-rules). It will also avoid running altogether on weekends and bank holidays.
+Note that govuk-dependabot-merger will avoid merging a PR if it has a failing GitHub Action CI build called `test-ruby`, [as per convention](https://docs.publishing.service.gov.uk/manual/test-and-build-a-project-with-github-actions.html#branch-protection-rules). It will also avoid running altogether on weekends and bank holidays.
 
 ## Usage
 
@@ -50,6 +48,7 @@ bundle exec rspec
 - [ADR 1: Limited team access to avoid privilege escalation](./docs/adr/01-limited-team-access.md)
 - [ADR 2: Do not merge subdependency updates](./docs/adr/02-do-not-merge-subdependencies.md)
 - [ADR 3: GitHub Access Token scope](./docs/adr/03-access-token-scope.md)
+- [ADR 4: Ignore subdependencies](./docs/adr/04-ignore-subdependencies.md)
 
 ## Licence
 
