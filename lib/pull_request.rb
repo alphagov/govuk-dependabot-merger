@@ -24,8 +24,10 @@ class PullRequest
       reasons_not_to_merge << "PR contains more than one commit."
     elsif !validate_files_changed
       reasons_not_to_merge << "PR changes files that should not be changed."
+    elsif !validate_ci_workflow_exists
+      reasons_not_to_merge << "CI workflow doesn't exist."
     elsif !validate_ci_passes
-      reasons_not_to_merge << "CI is failing or doesn't exist (should be a GitHub Action with a key called 'Test Ruby')."
+      reasons_not_to_merge << "CI workflow is failing."
     elsif !validate_external_config_file
       reasons_not_to_merge << "The remote .govuk_dependabot_merger.yml file is missing or in the wrong format."
     else
@@ -56,14 +58,20 @@ class PullRequest
     files_changed == ["Gemfile.lock"]
   end
 
+  def validate_ci_workflow_exists
+    !ci_workflow_run_id.nil?
+  end
+
   def validate_ci_passes
     # No method exists for this in Octokit,
     # so we need to make the API call manually.
-    uri = "https://api.github.com/repos/alphagov/#{@api_response.base.repo.name}/commits/#{@api_response.head.sha}/check-runs"
-    check_runs = HTTParty.get(uri)["check_runs"]
-    return false unless check_runs && (ci_run = check_runs.find { |run| run["name"] == "Test Ruby" })
+    jobs_url = "https://api.github.com/repos/alphagov/#{@api_response.base.repo.name}/actions/runs/#{ci_workflow_run_id}/jobs"
+    jobs = HTTParty.get(jobs_url)["jobs"]
 
-    ci_run["conclusion"] == "success"
+    unfinished_jobs = jobs.reject { |job| job["status"] == "completed" }
+    failed_jobs = jobs.reject { |job| %w[success skipped].include?(job["conclusion"]) }
+
+    unfinished_jobs.empty? && failed_jobs.empty?
   end
 
   def validate_external_config_file
@@ -145,5 +153,19 @@ class PullRequest
     lines_added.each do |name, version|
       dependency_manager.add_dependency(name:, version:) if mentioned_dependencies[name]&.fetch(:to_version) == version
     end
+  end
+
+private
+
+  def ci_workflow_run_id
+    return @ci_workflow_run_id unless @ci_workflow_run_id.nil?
+
+    # No method exists for this in Octokit,
+    # so we need to make the API call manually.
+    ci_workflow_api_response = HTTParty.get("https://api.github.com/repos/alphagov/#{@api_response.base.repo.name}/actions/runs?head_sha=#{@api_response.head.sha}")
+    ci_workflow = ci_workflow_api_response["workflow_runs"].find { |run| run["name"] == "CI" }
+    return nil if ci_workflow.nil?
+
+    @ci_workflow_run_id = ci_workflow["id"]
   end
 end
