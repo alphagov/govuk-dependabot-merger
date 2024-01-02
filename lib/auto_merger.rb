@@ -13,19 +13,22 @@ class AutoMerger
 
   def merge_dependabot_prs
     Repos.all.each do |repo|
+      if repo.dependabot_pull_requests.count.zero?
+        puts "No Dependabot PRs found for repo '#{repo.name}'."
+      else
+        puts "#{repo.dependabot_pull_requests.count} Dependabot PRs found for repo '#{repo.name}':"
+      end
+
       repo.dependabot_pull_requests.each do |pr|
-        puts "Inspecting #{repo.name}##{pr.number}..."
+        puts "  - Inspecting #{repo.name}##{pr.number}..."
 
         if pr.is_auto_mergeable?
-          puts "...approving! ✅"
+          puts "    ...approving! ✅"
           pr.approve!
-          puts "...merging! 🎉"
+          puts "    ...merging! 🎉"
           pr.merge!
         else
-          pr.reasons_not_to_merge.each do |reason|
-            puts "  Not auto-mergeable: #{reason}"
-          end
-          puts "...skipping."
+          puts "    ...not auto-mergeable: #{pr.reasons_not_to_merge.join(' ')} Skipping."
         end
       end
     end

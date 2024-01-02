@@ -11,7 +11,7 @@ class Repo
   end
 
   def dependabot_pull_requests
-    GitHubClient
+    @dependabot_pull_requests ||= GitHubClient
       .instance
       .pull_requests("alphagov/#{@repo_name}", state: :open, sort: :created)
       .select { |api_response| api_response.user.login == "dependabot[bot]" }
