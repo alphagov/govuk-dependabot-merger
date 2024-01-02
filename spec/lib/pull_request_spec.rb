@@ -23,6 +23,26 @@ RSpec.describe PullRequest do
     TEXT
   end
 
+  def single_external_dependency_commit
+    <<~TEXT
+      Bump shoulda-matchers from 5.3.0 to 6.0.0
+
+      Bumps [shoulda-matchers](https://github.com/thoughtbot/shoulda-matchers) from 5.3.0 to 6.0.0.
+      - [Release notes](https://github.com/thoughtbot/shoulda-matchers/releases)
+      - [Changelog](https://github.com/thoughtbot/shoulda-matchers/blob/main/CHANGELOG.md)
+      - [Commits](thoughtbot/shoulda-matchers@v5.3.0...v6.0.0)
+
+      ---
+      updated-dependencies:
+      - dependency-name: shoulda-matchers
+        dependency-type: direct:development
+        update-type: version-update:semver-major
+      ...
+
+      Signed-off-by: dependabot[bot] <support@github.com>
+    TEXT
+  end
+
   def multiple_dependencies_commit
     <<~TEXT
       Bump rack, rails and govuk_sidekiq
@@ -510,6 +530,31 @@ RSpec.describe PullRequest do
         name: "govuk_publishing_components",
         version: "35.7.0",
       )
+      pull_request.tell_dependency_manager_what_dependabot_is_changing
+    end
+
+    it "supports hyphenated names" do
+      dependency_manager = double("DependencyManager")
+      api_response = "foo"
+      pull_request = PullRequest.new(api_response, dependency_manager)
+      allow(pull_request).to receive(:commit_message).and_return(single_external_dependency_commit)
+      allow(pull_request).to receive(:gemfile_lock_changes).and_return(
+        <<~GEMFILE_LOCK_DIFF,
+          -    shoulda-matchers (5.3.0)
+          +    shoulda-matchers (6.0.0)
+        GEMFILE_LOCK_DIFF
+      )
+
+      expect(dependency_manager).to receive(:remove_dependency).with(
+        name: "shoulda-matchers",
+        version: "5.3.0",
+      )
+
+      expect(dependency_manager).to receive(:add_dependency).with(
+        name: "shoulda-matchers",
+        version: "6.0.0",
+      )
+
       pull_request.tell_dependency_manager_what_dependabot_is_changing
     end
   end
