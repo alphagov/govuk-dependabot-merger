@@ -1,4 +1,5 @@
 require_relative "./bank_holiday_checker"
+require_relative "./repo"
 require_relative "./repos"
 
 class AutoMerger
@@ -28,5 +29,14 @@ class AutoMerger
         end
       end
     end
+  end
+
+  def self.analyse_dependabot_pr(url)
+    puts "Analysing #{url}..."
+    _, repo_name, pr_number = url.match(/alphagov\/(.+)\/pull\/(.+)$/).to_a
+    pr = Repo.new(repo_name).dependabot_pull_request(pr_number)
+
+    puts pr.is_auto_mergeable? ? "PR is considered auto-mergeable." : "PR is not considered auto-mergeable."
+    puts 'Add `require "byebug"; byebug` inside the `is_auto_mergeable?` method to find out more.'
   end
 end

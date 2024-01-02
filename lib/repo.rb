@@ -17,4 +17,8 @@ class Repo
       .select { |api_response| api_response.user.login == "dependabot[bot]" }
       .map { |api_response| PullRequest.new(api_response) }
   end
+
+  def dependabot_pull_request(pr_number)
+    PullRequest.new(GitHubClient.instance.pull_request("alphagov/#{@repo_name}", pr_number))
+  end
 end
