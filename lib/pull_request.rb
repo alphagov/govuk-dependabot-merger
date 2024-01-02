@@ -139,10 +139,9 @@ class PullRequest
   end
 
   def tell_dependency_manager_what_dependabot_is_changing
-    dependency_updates = commit_message.scan(/(?:Bump|Updates) `?(\w+)`? from (\d+\.\d+\.\d+) to (\d+\.\d+\.\d+)/)
+    dependency_updates = commit_message.scan(/(?:Bump|Updates) (.+) from (\d+\.\d+\.\d+) to (\d+\.\d+\.\d+)/)
 
-    mentioned_dependencies = dependency_updates.to_h { |name, from_version, to_version| [name, { from_version:, to_version: }] }
-
+    mentioned_dependencies = dependency_updates.to_h { |name, from_version, to_version| [name.gsub(/`/m, ""), { from_version:, to_version: }] }
     lines_removed = gemfile_lock_changes.scan(/^-\s+([a-z\-_]+) \(([0-9.]+)\)$/)
     lines_added = gemfile_lock_changes.scan(/^\+\s+([a-z\-_]+) \(([0-9.]+)\)$/)
 
