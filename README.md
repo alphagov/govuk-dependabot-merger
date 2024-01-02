@@ -43,6 +43,22 @@ To run the tests:
 bundle exec rspec
 ```
 
+### Using the merger locally
+
+The repo expects an `AUTO_MERGE_TOKEN` environment variable to be defined. This should be a GitHub API token [with sufficient scope](./docs/adr/03-access-token-scope.md).
+
+You can then run the merger with:
+
+```
+bundle exec ruby bin/merge_dependabot_prs.rb
+```
+
+The repo also ships with a "doctor" script to help you to debug individual PRs and why they did or did not auto-merge.
+
+```
+bundle exec ruby bin/pr_doctor.rb https://github.com/alphagov/content-data-api/pull/1996
+```
+
 ### Further documentation
 
 - [ADR 1: Limited team access to avoid privilege escalation](./docs/adr/01-limited-team-access.md)
