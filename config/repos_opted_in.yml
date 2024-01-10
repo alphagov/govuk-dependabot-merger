@@ -1,6 +1,10 @@
+- account-api
 - bulk-changer
 - content-data-admin
 - content-data-api
+- email-alert-api
+- email-alert-frontend
+- email-alert-service
 - gds_zendesk
 - govuk-connect
 - govuk-developer-docs
@@ -10,7 +14,10 @@
 - govuk-technical-2ndline-dashboard
 - govuk-user-reviewer
 - govuk_app_config
+- govuk_personalisation
 - govuk_test
+- imminence
+- local-links-manager
 - locations-api
 - pay-pagerduty
 - plek
