@@ -1,7 +1,9 @@
 - account-api
 - bulk-changer
+- collections-publisher
 - content-data-admin
 - content-data-api
+- content-tagger
 - email-alert-api
 - email-alert-frontend
 - email-alert-service
@@ -21,8 +23,10 @@
 - locations-api
 - pay-pagerduty
 - plek
+- publisher
 - rack-logstasher
 - release
 - seal
+- smart-answers
 - support
 - support-api
