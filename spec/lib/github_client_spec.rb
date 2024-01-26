@@ -15,6 +15,11 @@ RSpec.describe GitHubClient do
   end
 
   describe ".get" do
+    it "should raise an exception if no `AUTO_MERGE_TOKEN` ENV var provided" do
+      ENV["AUTO_MERGE_TOKEN"] = nil
+      expect { GitHubClient.get("http://example.com") }.to raise_exception(GitHubAuthException, "AUTO_MERGE_TOKEN missing")
+    end
+
     it "should make an authenticated GET request via HTTParty" do
       url = "http://example.com"
       token = "foo"
@@ -27,6 +32,11 @@ RSpec.describe GitHubClient do
   end
 
   describe ".post" do
+    it "should raise an exception if no `AUTO_MERGE_TOKEN` ENV var provided" do
+      ENV["AUTO_MERGE_TOKEN"] = nil
+      expect { GitHubClient.post("http://example.com", {}) }.to raise_exception(GitHubAuthException, "AUTO_MERGE_TOKEN missing")
+    end
+
     it "should make an authenticated POST request via HTTParty" do
       url = "http://example.com"
       hash = { foo: "bar" }
@@ -37,18 +47,6 @@ RSpec.describe GitHubClient do
 
       ENV["AUTO_MERGE_TOKEN"] = token
       GitHubClient.post(url, hash)
-    end
-  end
-
-  describe ".token" do
-    it "should raise an exception if no `AUTO_MERGE_TOKEN` ENV var provided" do
-      ENV["AUTO_MERGE_TOKEN"] = nil
-      expect { GitHubClient.token }.to raise_exception(GitHubAuthException, "AUTO_MERGE_TOKEN missing")
-    end
-
-    it "should return the token" do
-      ENV["AUTO_MERGE_TOKEN"] = "some-value"
-      expect(GitHubClient.token).to eq("some-value")
     end
   end
 end
