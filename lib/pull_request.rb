@@ -163,7 +163,7 @@ private
     # No method exists for this in Octokit,
     # so we need to make the API call manually.
     ci_workflow_api_response = HTTParty.get("https://api.github.com/repos/alphagov/#{@api_response.base.repo.name}/actions/runs?head_sha=#{@api_response.head.sha}")
-    ci_workflow = ci_workflow_api_response["workflow_runs"].find { |run| run["name"] == "CI" }
+    ci_workflow = ci_workflow_api_response["workflow_runs"]&.find { |run| run["name"] == "CI" }
     return nil if ci_workflow.nil?
 
     @ci_workflow_run_id = ci_workflow["id"]

@@ -348,6 +348,13 @@ RSpec.describe PullRequest do
       pr = PullRequest.new(pull_request_api_response)
       expect(pr.validate_ci_workflow_exists).to eq(false)
     end
+
+    it "returns false if there are no workflows in the response" do
+      stub_ci_endpoint({})
+
+      pr = PullRequest.new(pull_request_api_response)
+      expect(pr.validate_ci_workflow_exists).to eq(false)
+    end
   end
 
   describe "#validate_ci_passes" do
