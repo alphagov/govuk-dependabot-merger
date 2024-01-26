@@ -107,7 +107,7 @@ class PullRequest
   end
 
   def head_commit
-    GitHubClient.instance.commit("alphagov/#{@api_response.base.repo.name}", @api_response.head.sha)
+    @head_commit ||= GitHubClient.instance.commit("alphagov/#{@api_response.base.repo.name}", @api_response.head.sha)
   end
 
   def commit_message
@@ -158,7 +158,7 @@ class PullRequest
 private
 
   def ci_workflow_run_id
-    # return @ci_workflow_run_id unless @ci_workflow_run_id.nil?
+    return @ci_workflow_run_id unless @ci_workflow_run_id.nil?
 
     # No method exists for this in Octokit,
     # so we need to make the API call manually.
@@ -166,7 +166,6 @@ private
     ci_workflow = ci_workflow_api_response["workflow_runs"]&.find { |run| run["name"] == "CI" }
     return nil if ci_workflow.nil?
 
-    ci_workflow_run_id = ci_workflow["id"]
-    return ci_workflow_run_id
+    @ci_workflow_run_id = ci_workflow["id"]
   end
 end
