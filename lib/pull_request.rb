@@ -66,7 +66,7 @@ class PullRequest
     # No method exists for this in Octokit,
     # so we need to make the API call manually.
     jobs_url = "https://api.github.com/repos/alphagov/#{@api_response.base.repo.name}/actions/runs/#{ci_workflow_run_id}/jobs"
-    jobs = HTTParty.get(jobs_url)["jobs"]
+    jobs = HTTParty.get(jobs_url, headers: { "Authorization": "Bearer #{GitHubClient.token}" })["jobs"]
 
     unfinished_jobs = jobs.reject { |job| job["status"] == "completed" }
     failed_jobs = jobs.reject { |job| %w[success skipped].include?(job["conclusion"]) }
@@ -161,7 +161,10 @@ private
 
     # No method exists for this in Octokit,
     # so we need to make the API call manually.
-    ci_workflow_api_response = HTTParty.get("https://api.github.com/repos/alphagov/#{@api_response.base.repo.name}/actions/runs?head_sha=#{@api_response.head.sha}")
+    ci_workflow_api_response = HTTParty.get(
+      "https://api.github.com/repos/alphagov/#{@api_response.base.repo.name}/actions/runs?head_sha=#{@api_response.head.sha}",
+      headers: { "Authorization": "Bearer #{GitHubClient.token}" },
+    )
     ci_workflow = ci_workflow_api_response["workflow_runs"].find { |run| run["name"] == "CI" }
     return nil if ci_workflow.nil?
 
