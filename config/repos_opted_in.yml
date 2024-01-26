@@ -1,5 +1,6 @@
 - account-api
 - bulk-changer
+- collections
 - collections-publisher
 - contacts-admin
 - content-data-admin
@@ -9,7 +10,9 @@
 - email-alert-api
 - email-alert-frontend
 - email-alert-service
+- frontend
 - gds_zendesk
+- government-frontend
 - govspeak-visual-editor
 - govuk-connect
 - govuk-developer-docs
@@ -22,6 +25,7 @@
 - govuk_personalisation
 - govuk_test
 - imminence
+- info-frontend
 - local-links-manager
 - locations-api
 - manuals-publisher
