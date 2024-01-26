@@ -84,14 +84,11 @@ class PullRequest
     approval_message = <<~REVIEW_COMMENT
       This PR has been scanned and automatically approved by [govuk-dependabot-merger](https://github.com/alphagov/govuk-dependabot-merger).
     REVIEW_COMMENT
-    response = HTTParty.post(
+    response = GitHubClient.post(
       "https://api.github.com/repos/alphagov/#{@api_response.base.repo.name}/pulls/#{@api_response.number}/reviews",
-      body: {
+      {
         event: "APPROVE",
         body: approval_message,
-      }.to_json,
-      headers: {
-        "Authorization": "Bearer #{GitHubClient.token}",
       },
     )
     if response.code != 200

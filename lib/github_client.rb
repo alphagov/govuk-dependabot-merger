@@ -14,6 +14,10 @@ class GitHubClient
     HTTParty.get(url, headers: { "Authorization": "Bearer #{GitHubClient.token}" })
   end
 
+  def self.post(url, hash)
+    HTTParty.post(url, body: hash.to_json, headers: { "Authorization": "Bearer #{GitHubClient.token}" })
+  end
+
   def self.token
     ensure_token_exists!
     ENV["AUTO_MERGE_TOKEN"]

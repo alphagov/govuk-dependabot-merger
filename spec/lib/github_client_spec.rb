@@ -26,6 +26,20 @@ RSpec.describe GitHubClient do
     end
   end
 
+  describe ".post" do
+    it "should make an authenticated POST request via HTTParty" do
+      url = "http://example.com"
+      hash = { foo: "bar" }
+      json = '{"foo":"bar"}'
+      token = "foo"
+
+      expect(HTTParty).to receive(:post).with(url, body: json, headers: { "Authorization": "Bearer #{token}" })
+
+      ENV["AUTO_MERGE_TOKEN"] = token
+      GitHubClient.post(url, hash)
+    end
+  end
+
   describe ".token" do
     it "should raise an exception if no `AUTO_MERGE_TOKEN` ENV var provided" do
       ENV["AUTO_MERGE_TOKEN"] = nil
