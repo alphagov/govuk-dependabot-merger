@@ -164,7 +164,10 @@ private
     # so we need to make the API call manually.
     ci_workflow_api_response = HTTParty.get("https://api.github.com/repos/alphagov/#{@api_response.base.repo.name}/actions/runs?head_sha=#{@api_response.head.sha}")
     ci_workflow = ci_workflow_api_response["workflow_runs"]&.find { |run| run["name"] == "CI" }
-    return nil if ci_workflow.nil?
+    if ci_workflow.nil?
+      puts "Allegedly no CI workflow in API response for https://api.github.com/repos/alphagov/#{@api_response.base.repo.name}/actions/runs?head_sha=#{@api_response.head.sha}"
+      puts ci_workflow_api_response.inspect
+    end
 
     @ci_workflow_run_id = ci_workflow["id"]
   end
