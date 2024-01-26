@@ -1,3 +1,4 @@
+require "httparty"
 require "octokit"
 
 class GitHubAuthException < StandardError; end
@@ -7,6 +8,10 @@ class GitHubClient
     ensure_token_exists!
 
     Octokit::Client.new(access_token: ENV["AUTO_MERGE_TOKEN"])
+  end
+
+  def self.get(url)
+    HTTParty.get(url, headers: { "Authorization": "Bearer #{GitHubClient.token}" })
   end
 
   def self.token

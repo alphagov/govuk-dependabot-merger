@@ -14,6 +14,18 @@ RSpec.describe GitHubClient do
     end
   end
 
+  describe ".get" do
+    it "should make an authenticated GET request via HTTParty" do
+      url = "http://example.com"
+      token = "foo"
+
+      expect(HTTParty).to receive(:get).with(url, headers: { "Authorization": "Bearer #{token}" })
+
+      ENV["AUTO_MERGE_TOKEN"] = token
+      GitHubClient.get(url)
+    end
+  end
+
   describe ".token" do
     it "should raise an exception if no `AUTO_MERGE_TOKEN` ENV var provided" do
       ENV["AUTO_MERGE_TOKEN"] = nil
