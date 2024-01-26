@@ -67,6 +67,7 @@ class PullRequest
     # so we need to make the API call manually.
     jobs_url = "https://api.github.com/repos/alphagov/#{@api_response.base.repo.name}/actions/runs/#{ci_workflow_run_id}/jobs"
     jobs = HTTParty.get(jobs_url)["jobs"]
+    return false if jobs.nil?
 
     unfinished_jobs = jobs.reject { |job| job["status"] == "completed" }
     failed_jobs = jobs.reject { |job| %w[success skipped].include?(job["conclusion"]) }

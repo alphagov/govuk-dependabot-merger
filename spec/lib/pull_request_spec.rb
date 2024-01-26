@@ -393,6 +393,13 @@ RSpec.describe PullRequest do
       pr = PullRequest.new(pull_request_api_response)
       expect(pr.validate_ci_passes).to eq(false)
     end
+
+    it "returns false if PR has no CI pipeline" do
+      stub_runs_endpoint(ci_workflow_id, {})
+
+      pr = PullRequest.new(pull_request_api_response)
+      expect(pr.validate_ci_passes).to eq(false)
+    end
   end
 
   describe "#validate_external_config_file" do
