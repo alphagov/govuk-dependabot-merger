@@ -28,8 +28,10 @@ class PullRequest
       reasons_not_to_merge << "CI workflow doesn't exist."
     elsif !validate_ci_passes
       reasons_not_to_merge << "CI workflow is failing."
-    elsif !validate_external_config_file
-      reasons_not_to_merge << "The remote .govuk_dependabot_merger.yml file is missing or in the wrong format."
+    elsif !validate_external_config_file_exists
+      reasons_not_to_merge << "The remote .govuk_dependabot_merger.yml file is missing."
+    elsif !validate_external_config_file_contents
+      reasons_not_to_merge << "The remote .govuk_dependabot_merger.yml file does not have the expected YAML structure."
     else
       tell_dependency_manager_what_dependencies_are_allowed
       tell_dependency_manager_what_dependabot_is_changing
@@ -74,10 +76,13 @@ class PullRequest
     unfinished_jobs.empty? && failed_jobs.empty?
   end
 
-  def validate_external_config_file
-    return false unless remote_config["api_version"] == DependabotAutoMerge::VERSION
+  def validate_external_config_file_exists
+    remote_config[:error] != "404"
+  end
 
-    true
+  def validate_external_config_file_contents
+    remote_config[:error] != "syntax" &&
+      remote_config["api_version"] == DependabotAutoMerge::VERSION
   end
 
   def approve!
@@ -123,7 +128,9 @@ class PullRequest
                                         },
                                       ))
   rescue Octokit::NotFound
-    {}
+    { "error": "404" }
+  rescue Psych::SyntaxError
+    { "error": "syntax" }
   end
 
   def tell_dependency_manager_what_dependencies_are_allowed

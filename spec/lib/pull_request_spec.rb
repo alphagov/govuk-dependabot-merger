@@ -180,14 +180,25 @@ RSpec.describe PullRequest do
       ])
     end
 
-    it "should make a call to validate_external_config_file" do
+    it "should make a call to validate_external_config_file_exists" do
       stub_successful_check_run
       pr = create_pull_request_instance
-      allow(pr).to receive(:validate_external_config_file).and_return(false)
-      expect(pr).to receive(:validate_external_config_file)
+      allow(pr).to receive(:validate_external_config_file_exists).and_return(false)
+      expect(pr).to receive(:validate_external_config_file_exists)
       pr.is_auto_mergeable?
       expect(pr.reasons_not_to_merge).to eq([
-        "The remote .govuk_dependabot_merger.yml file is missing or in the wrong format.",
+        "The remote .govuk_dependabot_merger.yml file is missing.",
+      ])
+    end
+
+    it "should make a call to validate_external_config_file_contents" do
+      stub_successful_check_run
+      pr = create_pull_request_instance
+      allow(pr).to receive(:validate_external_config_file_contents).and_return(false)
+      expect(pr).to receive(:validate_external_config_file_contents)
+      pr.is_auto_mergeable?
+      expect(pr.reasons_not_to_merge).to eq([
+        "The remote .govuk_dependabot_merger.yml file does not have the expected YAML structure.",
       ])
     end
 
@@ -264,7 +275,8 @@ RSpec.describe PullRequest do
       pr = PullRequest.new(pull_request_api_response, dependency_manager)
       allow(pr).to receive(:validate_single_commit).and_return(true)
       allow(pr).to receive(:validate_files_changed).and_return(true)
-      allow(pr).to receive(:validate_external_config_file).and_return(true)
+      allow(pr).to receive(:validate_external_config_file_exists).and_return(true)
+      allow(pr).to receive(:validate_external_config_file_contents).and_return(true)
       pr
     end
 
@@ -395,15 +407,25 @@ RSpec.describe PullRequest do
     end
   end
 
-  describe "#validate_external_config_file" do
+  describe "#validate_external_config_file_exists" do
     it "returns false if there is no automerge config file in the repo" do
       stub_request(:get, external_config_file_api_url)
         .to_return(status: 404)
 
       pr = PullRequest.new(pull_request_api_response)
-      expect(pr.validate_external_config_file).to eq(false)
+      expect(pr.validate_external_config_file_exists).to eq(false)
     end
 
+    it "returns true if the automerge config file exists" do
+      stub_request(:get, external_config_file_api_url)
+        .to_return(status: 200, body: "{}")
+
+      pr = PullRequest.new(pull_request_api_response)
+      expect(pr.validate_external_config_file_exists).to eq(true)
+    end
+  end
+
+  describe "#validate_external_config_file_contents" do
     it "returns false if the automerge config file is on a different version" do
       contents_api_response = <<~EXTERNAL_CONFIG_YAML
         api_version: -1
@@ -414,14 +436,36 @@ RSpec.describe PullRequest do
         .to_return(status: 200, body: contents_api_response.to_json, headers: { "Content-Type": "application/json" })
 
       pr = PullRequest.new(pull_request_api_response)
-      expect(pr.validate_external_config_file).to eq(false)
+      expect(pr.validate_external_config_file_contents).to eq(false)
     end
 
-    it "returns true if the automerge config file exists and contains nothing unexpected" do
+    it "returns false if the config file is not in the right YAML format" do
+      contents_api_response = <<~EXTERNAL_CONFIG_YAML
+        api_version: 1
+        auto_merge:
+          - dependency: govuk_publishing_components
+            allowed_semver_bumps:
+              - patch
+              - minor
+        # note that the below is outdented too far
+        - dependency: rubocop-govuk
+          allowed_semver_bumps:
+            - patch
+            - minor
+      EXTERNAL_CONFIG_YAML
+
+      stub_request(:get, external_config_file_api_url)
+        .to_return(status: 200, body: contents_api_response.to_json, headers: { "Content-Type": "application/json" })
+
+      pr = PullRequest.new(pull_request_api_response)
+      expect(pr.validate_external_config_file_contents).to eq(false)
+    end
+
+    it "returns true if the automerge config file contains nothing unexpected" do
       stub_remote_allowlist
 
       pr = PullRequest.new(pull_request_api_response)
-      expect(pr.validate_external_config_file).to eq(true)
+      expect(pr.validate_external_config_file_contents).to eq(true)
     end
   end
 
