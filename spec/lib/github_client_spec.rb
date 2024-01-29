@@ -14,15 +14,39 @@ RSpec.describe GitHubClient do
     end
   end
 
-  describe ".token" do
+  describe ".get" do
     it "should raise an exception if no `AUTO_MERGE_TOKEN` ENV var provided" do
       ENV["AUTO_MERGE_TOKEN"] = nil
-      expect { GitHubClient.token }.to raise_exception(GitHubAuthException, "AUTO_MERGE_TOKEN missing")
+      expect { GitHubClient.get("http://example.com") }.to raise_exception(GitHubAuthException, "AUTO_MERGE_TOKEN missing")
     end
 
-    it "should return the token" do
-      ENV["AUTO_MERGE_TOKEN"] = "some-value"
-      expect(GitHubClient.token).to eq("some-value")
+    it "should make an authenticated GET request via HTTParty" do
+      url = "http://example.com"
+      token = "foo"
+
+      expect(HTTParty).to receive(:get).with(url, headers: { "Authorization": "Bearer #{token}" })
+
+      ENV["AUTO_MERGE_TOKEN"] = token
+      GitHubClient.get(url)
+    end
+  end
+
+  describe ".post" do
+    it "should raise an exception if no `AUTO_MERGE_TOKEN` ENV var provided" do
+      ENV["AUTO_MERGE_TOKEN"] = nil
+      expect { GitHubClient.post("http://example.com", {}) }.to raise_exception(GitHubAuthException, "AUTO_MERGE_TOKEN missing")
+    end
+
+    it "should make an authenticated POST request via HTTParty" do
+      url = "http://example.com"
+      hash = { foo: "bar" }
+      json = '{"foo":"bar"}'
+      token = "foo"
+
+      expect(HTTParty).to receive(:post).with(url, body: json, headers: { "Authorization": "Bearer #{token}" })
+
+      ENV["AUTO_MERGE_TOKEN"] = token
+      GitHubClient.post(url, hash)
     end
   end
 end
