@@ -9,9 +9,10 @@ This repo requires a privileged GitHub token in order to approve and merge pull 
 ## Decision
 
 We'll create a fine grained GitHub personal access token on the [govuk-ci](https://github.com/govuk-ci) user, with the following permissions:
-- Read on metadata
-- Read and write on pull requests
-- Read and write on contents
+- Read-only on Actions
+- Read-only on Metadata
+- Read and write on Pull requests
+- Read and write on Contents
 - Applied to "All repositories" owned by the organisation.
 
 This token will be used as the `AUTO_MERGE_TOKEN` repository secret for govuk-dependabot-merger.
