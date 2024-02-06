@@ -6,6 +6,7 @@ require_relative "./version"
 
 class PullRequest
   class CannotApproveException < StandardError; end
+  class UnexpectedGitHubApiResponse < StandardError; end
 
   attr_reader :dependency_manager, :reasons_not_to_merge
 
@@ -165,7 +166,16 @@ private
 
     # No method exists for this in Octokit,
     # so we need to make the API call manually.
-    ci_workflow_api_response = GitHubClient.get("https://api.github.com/repos/alphagov/#{@api_response.base.repo.name}/actions/runs?head_sha=#{@api_response.head.sha}")
+    uri = "https://api.github.com/repos/alphagov/#{@api_response.base.repo.name}/actions/runs?head_sha=#{@api_response.head.sha}"
+    ci_workflow_api_response = GitHubClient.get(uri)
+
+    if ci_workflow_api_response["workflow_runs"].nil?
+      raise(
+        PullRequest::UnexpectedGitHubApiResponse,
+        "Error fetching CI workflow in API response for #{uri}\n#{ci_workflow_api_response}",
+      )
+    end
+
     ci_workflow = ci_workflow_api_response["workflow_runs"].find { |run| run["name"] == "CI" }
     return nil if ci_workflow.nil?
 

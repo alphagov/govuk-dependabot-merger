@@ -360,6 +360,21 @@ RSpec.describe PullRequest do
       pr = PullRequest.new(pull_request_api_response)
       expect(pr.validate_ci_workflow_exists).to eq(false)
     end
+
+    it "should raise an exception if no workflows are returned in the response" do
+      stub_ci_endpoint({ "error": "some GitHub error" })
+
+      pr = PullRequest.new(pull_request_api_response)
+      expected_output = <<~MULTILINE_OUTPUT
+        Error fetching CI workflow in API response for https://api.github.com/repos/alphagov/foo/actions/runs?head_sha=#{sha}
+        {"error":"some GitHub error"}
+      MULTILINE_OUTPUT
+
+      expect { pr.validate_ci_workflow_exists }.to raise_exception(
+        PullRequest::UnexpectedGitHubApiResponse,
+        expected_output.strip!,
+      )
+    end
   end
 
   describe "#validate_ci_passes" do
