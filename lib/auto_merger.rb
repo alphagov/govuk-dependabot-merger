@@ -1,10 +1,10 @@
-require_relative "./bank_holiday_checker"
+require_relative "./bank_holidays"
 require_relative "./repo"
 require_relative "./repos"
 
 class AutoMerger
   def self.invoke_merge_script!
-    if BankHolidayChecker.is_bank_holiday?
+    if Date.today.is_bank_holiday?
       puts "Today is a bank holiday. Skipping auto-merge."
     else
       AutoMerger.new.merge_dependabot_prs

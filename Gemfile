@@ -7,6 +7,5 @@ group :development, :test do
   gem "byebug"
   gem "rspec"
   gem "rubocop-govuk", require: false
-  gem "timecop"
   gem "webmock"
 end

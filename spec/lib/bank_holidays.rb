@@ -1,7 +1,6 @@
-require "timecop"
-require_relative "../../lib/bank_holiday_checker"
+require_relative "../../lib/bank_holidays"
 
-RSpec.describe BankHolidayChecker do
+RSpec.describe Date do
   before do
     example_bank_holiday_data = {
       "england-and-wales": {
@@ -26,16 +25,19 @@ RSpec.describe BankHolidayChecker do
       .to_return(status: 200, body: example_bank_holiday_data.to_json)
   end
 
-  describe ".is_bank_holiday?" do
-    it "should return true if today is a bank holiday" do
-      bank_holiday_date = Time.local(2018, 0o3, 30, 10, 5, 0)
-      Timecop.freeze(bank_holiday_date) do
-        expect(BankHolidayChecker.is_bank_holiday?).to eq(true)
-      end
+  describe ".bank_holidays" do
+    it "should return all bank holidays as an array" do
+      expect(Date.bank_holidays).to eq([Date.new(2018, 1, 1), Date.new(2018, 3, 30)])
+    end
+  end
+
+  describe "#is_bank_holiday?" do
+    it "should return true if the date is a bank holiday" do
+      expect(Date.new(2018, 3, 30).is_bank_holiday?).to eq(true)
     end
 
-    it "should return false if today is not a bank holiday" do
-      expect(BankHolidayChecker.is_bank_holiday?).to eq(false)
+    it "should return false if the date is not a bank holiday" do
+      expect(Date.new(2018, 3, 31).is_bank_holiday?).to eq(false)
     end
   end
 end
