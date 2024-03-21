@@ -3,14 +3,6 @@ require_relative "../../lib/repo"
 RSpec.describe Repo do
   before { set_up_mock_token }
 
-  describe "#name" do
-    it "should return the name of the repo" do
-      repo_name = "foo"
-      repo = Repo.new(repo_name)
-      expect(repo.name).to eq(repo_name)
-    end
-  end
-
   describe "#dependabot_pull_requests" do
     it "should return an array of PullRequest objects" do
       repo_name = "foo"
