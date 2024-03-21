@@ -1,7 +1,12 @@
+require "yaml"
 require_relative "./github_client"
 require_relative "./pull_request"
 
 Repo = Struct.new(:name) do
+  def self.all(config_file = File.join(File.dirname(__FILE__), "../config/repos_opted_in.yml"))
+    YAML.safe_load_file(config_file).map { |repo_name| Repo.new(repo_name) }
+  end
+
   def dependabot_pull_requests
     @dependabot_pull_requests ||= GitHubClient
       .instance
