@@ -3,7 +3,7 @@ require "octokit"
 
 class GitHubAuthException < StandardError; end
 
-class GitHubClient
+module GitHubClient
   def self.instance
     Octokit::Client.new(access_token: token)
   end
