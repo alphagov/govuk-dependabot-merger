@@ -5,7 +5,7 @@ class DependencyManager
 
   def initialize
     @allowed_dependency_updates = []
-    @dependency_changes = []
+    @dependency_changes = Hash.new { |h, v| h[v] = OpenStruct.new(previous_version: nil, next_version: nil) }
   end
 
   def allow_dependency_update(name:, allowed_semver_bumps:)
@@ -13,48 +13,37 @@ class DependencyManager
   end
 
   def proposed_dependency_updates
-    @dependency_changes.map(&:name).uniq.map do |name|
+    @dependency_changes.map do |name, update|
       {
         name:,
-        previous_version: find_previous_version(name),
-        next_version: find_next_version(name),
+        previous_version: update.previous_version,
+        next_version: update.next_version,
       }
     end
   end
 
-  def find_previous_version(dependency_name)
-    @dependency_changes.find { |dep| dep.name == dependency_name && dep.previous_version }&.previous_version
-  end
-
-  def find_next_version(dependency_name)
-    @dependency_changes.find { |dep| dep.name == dependency_name && dep.next_version }&.next_version
-  end
-
   def add_dependency(name:, version:)
-    @dependency_changes << OpenStruct.new(name:, next_version: version, previous_version: nil)
+    raise DependencyConflict unless @dependency_changes[name].next_version.nil?
+
+    @dependency_changes[name].next_version = version
     validate_dependency_changes!
   end
 
   def remove_dependency(name:, version:)
-    @dependency_changes << OpenStruct.new(name:, previous_version: version, next_version: nil)
+    raise DependencyConflict unless @dependency_changes[name].previous_version.nil?
+
+    @dependency_changes[name].previous_version = version
     validate_dependency_changes!
   end
 
   def validate_dependency_changes!
-    raise InvalidInput if @dependency_changes.map(&:name).include?(nil)
+    raise InvalidInput if @dependency_changes.keys.include?(nil)
 
     proposed_dependency_updates.each do |update|
       raise InvalidInput if update[:previous_version].nil? && update[:next_version].nil?
 
       DependencyManager.validate_semver(update[:previous_version]) if update[:previous_version]
       DependencyManager.validate_semver(update[:next_version]) if update[:next_version]
-    end
-
-    @dependency_changes.map(&:name).uniq.each do |name|
-      changes_with_this_name = @dependency_changes.select { |dep| dep.name == name }
-      previous_versions = changes_with_this_name.map(&:previous_version).compact
-      next_versions = changes_with_this_name.map(&:next_version).compact
-      raise DependencyConflict if previous_versions.count > 1 || next_versions.count > 1
     end
   end
 
