@@ -1,32 +1,34 @@
 require_relative "../../lib/dependency_manager"
 
-RSpec.describe DependencyManager do
-  describe ".update_type" do
+RSpec.describe Update do
+  describe "#type" do
     it "returns :unchanged if the two versions are identical" do
-      expect(DependencyManager.update_type("0.0.0", "0.0.0")).to eq(:unchanged)
+      expect(Update.new("0.0.0", "0.0.0").type).to eq(:unchanged)
     end
 
     it "returns :patch if update type is a patch" do
-      expect(DependencyManager.update_type("0.0.0", "0.0.1")).to eq(:patch)
+      expect(Update.new("0.0.0", "0.0.1").type).to eq(:patch)
     end
 
     it "returns :minor if update type is a minor" do
-      expect(DependencyManager.update_type("0.0.0", "0.1.0")).to eq(:minor)
+      expect(Update.new("0.0.0", "0.1.0").type).to eq(:minor)
     end
 
     it "returns :major if update type is a major" do
-      expect(DependencyManager.update_type("0.0.0", "1.0.0")).to eq(:major)
+      expect(Update.new("0.0.0", "1.0.0").type).to eq(:major)
     end
 
     it "returns the biggest update type" do
-      expect(DependencyManager.update_type("0.0.0", "1.2.3")).to eq(:major)
+      expect(Update.new("0.0.0", "1.2.3").type).to eq(:major)
     end
 
     it "raises an exception if semver not provided" do
-      expect { DependencyManager.update_type("1", "0.0.0") }.to raise_exception(DependencyManager::SemverException)
+      expect { Update.new("1", "0.0.0").type }.to raise_exception(DependencyManager::SemverException)
     end
   end
+end
 
+RSpec.describe DependencyManager do
   describe "#allowed_dependency_updates" do
     it "returns array of dependencies and semvers that are 'allowed' to be auto-merged" do
       manager = DependencyManager.new
@@ -54,44 +56,28 @@ RSpec.describe DependencyManager do
       manager.add_dependency(name: "foo", version: "1.1.0")
       manager.add_dependency(name: "bar", version: "0.3.1")
 
-      expect(manager.proposed_dependency_updates).to eq([
-        {
-          name: "foo",
-          previous_version: "1.0.0",
-          next_version: "1.1.0",
-        },
-        {
-          name: "bar",
-          previous_version: "0.3.0",
-          next_version: "0.3.1",
-        },
-      ])
+      expect(manager.proposed_dependency_updates).to eq({
+        "foo" => Update.new("1.0.0", "1.1.0"),
+        "bar" => Update.new("0.3.0", "0.3.1"),
+      })
     end
 
     it "returns proposed dependency update with previous_version set to nil, if dependency added and not removed" do
       manager = DependencyManager.new
       manager.add_dependency(name: "foo", version: "1.1.0")
 
-      expect(manager.proposed_dependency_updates).to eq([
-        {
-          name: "foo",
-          previous_version: nil,
-          next_version: "1.1.0",
-        },
-      ])
+      expect(manager.proposed_dependency_updates).to eq({
+        "foo" => Update.new(nil, "1.1.0"),
+      })
     end
 
     it "returns proposed dependency update with next_version set to nil, if dependency removed and not added" do
       manager = DependencyManager.new
       manager.remove_dependency(name: "foo", version: "1.0.0")
 
-      expect(manager.proposed_dependency_updates).to eq([
-        {
-          name: "foo",
-          previous_version: "1.0.0",
-          next_version: nil,
-        },
-      ])
+      expect(manager.proposed_dependency_updates).to eq({
+        "foo" => Update.new("1.0.0", nil),
+      })
     end
   end
 
