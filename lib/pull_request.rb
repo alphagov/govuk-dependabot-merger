@@ -121,13 +121,12 @@ class PullRequest
   end
 
   def remote_config
-    @remote_config ||= YAML.safe_load(GitHubClient.instance.contents(
-                                        "alphagov/#{@api_response.base.repo.name}",
-                                        {
-                                          accept: "application/vnd.github.raw",
-                                          path: ".govuk_dependabot_merger.yml",
-                                        },
-                                      ))
+    @remote_config ||= GitHubClient.instance
+      .contents(
+        "alphagov/#{@api_response.base.repo.name}",
+        path: ".govuk_dependabot_merger.yml",
+      )
+      .then { |content| YAML.safe_load content }
   rescue Octokit::NotFound
     { "error": "404" }
   rescue Psych::SyntaxError
