@@ -52,32 +52,24 @@ class DependencyManager
   end
 
   def all_proposed_dependencies_on_allowlist?
-    proposed_dependency_updates.each_key do |name|
-      return false unless allowed_dependency_updates.find { |dep| dep[:name] == name }
+    proposed_dependency_updates.keys.all? do |name|
+      allowed_dependency_updates.map { |dep| dep[:name] }.include? name
     end
-
-    true
   end
 
   def all_proposed_updates_semver_allowed?
-    proposed_dependency_updates.each do |name, update|
-      dependency_recognised = allowed_dependency_updates.find { |dep| dep[:name] == name }
-      next unless dependency_recognised
-
-      return false unless dependency_recognised[:allowed_semver_bumps].include?(update.type.to_s)
+    proposed_dependency_updates.all? do |name, update|
+      dependency = allowed_dependency_updates.find { |dep| dep[:name] == name }
+      dependency.nil? || dependency[:allowed_semver_bumps].include?(update.type.to_s)
     end
-
-    true
   end
 
   def all_proposed_dependencies_are_internal?
-    proposed_dependency_updates.each_key do |name|
-      uri = "https://rubygems.org/api/v1/gems/#{name}/owners.yaml"
-      gem_owners = YAML.safe_load(HTTParty.get(uri))
-      return false unless gem_owners.map { |owner| owner["handle"] }.include?("govuk")
+    proposed_dependency_updates.keys.all? do |name|
+      HTTParty.get("https://rubygems.org/api/v1/gems/#{name}/owners.yaml")
+        .then { |response| YAML.safe_load response }
+        .any? { |owner| owner["handle"] == "govuk" }
     end
-
-    true
   end
 
   def self.validate_semver(str)
