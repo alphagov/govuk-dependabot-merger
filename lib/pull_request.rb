@@ -161,23 +161,22 @@ class PullRequest
 private
 
   def ci_workflow_run_id
-    return @ci_workflow_run_id unless @ci_workflow_run_id.nil?
+    @ci_workflow_run_id ||= begin
+      # No method exists for this in Octokit,
+      # so we need to make the API call manually.
+      uri = "https://api.github.com/repos/alphagov/#{@api_response.base.repo.name}/actions/runs?head_sha=#{@api_response.head.sha}"
+      ci_workflow_api_response = GitHubClient.get(uri)
 
-    # No method exists for this in Octokit,
-    # so we need to make the API call manually.
-    uri = "https://api.github.com/repos/alphagov/#{@api_response.base.repo.name}/actions/runs?head_sha=#{@api_response.head.sha}"
-    ci_workflow_api_response = GitHubClient.get(uri)
+      if ci_workflow_api_response["workflow_runs"].nil?
+        raise(
+          PullRequest::UnexpectedGitHubApiResponse,
+          "Error fetching CI workflow in API response for #{uri}\n#{ci_workflow_api_response}",
+        )
+      end
 
-    if ci_workflow_api_response["workflow_runs"].nil?
-      raise(
-        PullRequest::UnexpectedGitHubApiResponse,
-        "Error fetching CI workflow in API response for #{uri}\n#{ci_workflow_api_response}",
-      )
+      ci_workflow_api_response["workflow_runs"]
+        .find { |run| run["name"] == "CI" }
+        &.dig("id")
     end
-
-    ci_workflow = ci_workflow_api_response["workflow_runs"].find { |run| run["name"] == "CI" }
-    return nil if ci_workflow.nil?
-
-    @ci_workflow_run_id = ci_workflow["id"]
   end
 end
