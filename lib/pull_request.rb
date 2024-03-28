@@ -1,4 +1,3 @@
-require "httparty"
 require "yaml"
 require_relative "./dependency_manager"
 require_relative "./github_client"
@@ -35,7 +34,7 @@ class PullRequest
       reasons_not_to_merge << "The remote .govuk_dependabot_merger.yml file does not have the expected YAML structure."
     else
       tell_dependency_manager_what_dependencies_are_allowed
-      tell_dependency_manager_what_dependabot_is_changing
+      dependency_manager.change_set = ChangeSet.from_commit_message(commit_message)
 
       if !dependency_manager.all_proposed_dependencies_on_allowlist?
         reasons_not_to_merge << "PR bumps a dependency that is not on the allowlist."
@@ -116,18 +115,13 @@ class PullRequest
     head_commit.commit.message
   end
 
-  def gemfile_lock_changes
-    head_commit.files.find { |file| file.filename == "Gemfile.lock" }.patch
-  end
-
   def remote_config
-    @remote_config ||= YAML.safe_load(GitHubClient.instance.contents(
-                                        "alphagov/#{@api_response.base.repo.name}",
-                                        {
-                                          accept: "application/vnd.github.raw",
-                                          path: ".govuk_dependabot_merger.yml",
-                                        },
-                                      ))
+    @remote_config ||= GitHubClient.instance
+      .contents(
+        "alphagov/#{@api_response.base.repo.name}",
+        path: ".govuk_dependabot_merger.yml",
+      )
+      .then { |content| YAML.safe_load content }
   rescue Octokit::NotFound
     { "error": "404" }
   rescue Psych::SyntaxError
@@ -143,42 +137,25 @@ class PullRequest
     end
   end
 
-  def tell_dependency_manager_what_dependabot_is_changing
-    dependency_updates = commit_message.scan(/(?:Bump|Updates) (.+) from (\d+\.\d+\.\d+) to (\d+\.\d+\.\d+)/)
-
-    mentioned_dependencies = dependency_updates.to_h { |name, from_version, to_version| [name.gsub(/`/m, ""), { from_version:, to_version: }] }
-    lines_removed = gemfile_lock_changes.scan(/^-\s+([a-z\-_]+) \(([0-9.]+)\)$/)
-    lines_added = gemfile_lock_changes.scan(/^\+\s+([a-z\-_]+) \(([0-9.]+)\)$/)
-
-    lines_removed.each do |name, version|
-      dependency_manager.remove_dependency(name:, version:) if mentioned_dependencies[name]&.fetch(:from_version) == version
-    end
-
-    lines_added.each do |name, version|
-      dependency_manager.add_dependency(name:, version:) if mentioned_dependencies[name]&.fetch(:to_version) == version
-    end
-  end
-
 private
 
   def ci_workflow_run_id
-    return @ci_workflow_run_id unless @ci_workflow_run_id.nil?
+    @ci_workflow_run_id ||= begin
+      # No method exists for this in Octokit,
+      # so we need to make the API call manually.
+      uri = "https://api.github.com/repos/alphagov/#{@api_response.base.repo.name}/actions/runs?head_sha=#{@api_response.head.sha}"
+      ci_workflow_api_response = GitHubClient.get(uri)
 
-    # No method exists for this in Octokit,
-    # so we need to make the API call manually.
-    uri = "https://api.github.com/repos/alphagov/#{@api_response.base.repo.name}/actions/runs?head_sha=#{@api_response.head.sha}"
-    ci_workflow_api_response = GitHubClient.get(uri)
+      if ci_workflow_api_response["workflow_runs"].nil?
+        raise(
+          PullRequest::UnexpectedGitHubApiResponse,
+          "Error fetching CI workflow in API response for #{uri}\n#{ci_workflow_api_response}",
+        )
+      end
 
-    if ci_workflow_api_response["workflow_runs"].nil?
-      raise(
-        PullRequest::UnexpectedGitHubApiResponse,
-        "Error fetching CI workflow in API response for #{uri}\n#{ci_workflow_api_response}",
-      )
+      ci_workflow_api_response["workflow_runs"]
+        .find { |run| run["name"] == "CI" }
+        &.dig("id")
     end
-
-    ci_workflow = ci_workflow_api_response["workflow_runs"].find { |run| run["name"] == "CI" }
-    return nil if ci_workflow.nil?
-
-    @ci_workflow_run_id = ci_workflow["id"]
   end
 end

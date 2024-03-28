@@ -1,33 +1,5 @@
 require_relative "../../lib/dependency_manager"
 
-RSpec.describe Update do
-  describe "#type" do
-    it "returns :unchanged if the two versions are identical" do
-      expect(Update.new("0.0.0", "0.0.0").type).to eq(:unchanged)
-    end
-
-    it "returns :patch if update type is a patch" do
-      expect(Update.new("0.0.0", "0.0.1").type).to eq(:patch)
-    end
-
-    it "returns :minor if update type is a minor" do
-      expect(Update.new("0.0.0", "0.1.0").type).to eq(:minor)
-    end
-
-    it "returns :major if update type is a major" do
-      expect(Update.new("0.0.0", "1.0.0").type).to eq(:major)
-    end
-
-    it "returns the biggest update type" do
-      expect(Update.new("0.0.0", "1.2.3").type).to eq(:major)
-    end
-
-    it "raises an exception if semver not provided" do
-      expect { Update.new("1", "0.0.0").type }.to raise_exception(DependencyManager::SemverException)
-    end
-  end
-end
-
 RSpec.describe DependencyManager do
   describe "#allowed_dependency_updates" do
     it "returns array of dependencies and semvers that are 'allowed' to be auto-merged" do
@@ -48,72 +20,10 @@ RSpec.describe DependencyManager do
     end
   end
 
-  describe "#proposed_dependency_updates" do
-    it "returns array of dependencies and semvers that are 'proposed' to be merged" do
-      manager = DependencyManager.new
-      manager.remove_dependency(name: "foo", version: "1.0.0")
-      manager.remove_dependency(name: "bar", version: "0.3.0")
-      manager.add_dependency(name: "foo", version: "1.1.0")
-      manager.add_dependency(name: "bar", version: "0.3.1")
-
-      expect(manager.proposed_dependency_updates).to eq({
-        "foo" => Update.new("1.0.0", "1.1.0"),
-        "bar" => Update.new("0.3.0", "0.3.1"),
-      })
-    end
-
-    it "returns proposed dependency update with previous_version set to nil, if dependency added and not removed" do
-      manager = DependencyManager.new
-      manager.add_dependency(name: "foo", version: "1.1.0")
-
-      expect(manager.proposed_dependency_updates).to eq({
-        "foo" => Update.new(nil, "1.1.0"),
-      })
-    end
-
-    it "returns proposed dependency update with next_version set to nil, if dependency removed and not added" do
-      manager = DependencyManager.new
-      manager.remove_dependency(name: "foo", version: "1.0.0")
-
-      expect(manager.proposed_dependency_updates).to eq({
-        "foo" => Update.new("1.0.0", nil),
-      })
-    end
-  end
-
-  describe "#add_dependency and #remove_dependency exception-handling" do
-    it "raises an exception if dependency is added without a name" do
-      manager = DependencyManager.new
-      expect { manager.add_dependency(name: nil, version: "1.0.0") }.to raise_exception(DependencyManager::InvalidInput)
-    end
-
-    it "raises an exception if dependency is added without a version" do
-      manager = DependencyManager.new
-      expect { manager.add_dependency(name: "foo", version: nil) }.to raise_exception(DependencyManager::InvalidInput)
-    end
-
-    it "raises an exception if dependency is added with a non-semver version" do
-      manager = DependencyManager.new
-      expect { manager.add_dependency(name: "foo", version: "jellyfish") }.to raise_exception(DependencyManager::SemverException)
-    end
-
-    it "raises an exception if the same dependency is added twice" do
-      manager = DependencyManager.new
-      manager.add_dependency(name: "foo", version: "1.0.0")
-      expect { manager.add_dependency(name: "foo", version: "1.1.0") }.to raise_exception(DependencyManager::DependencyConflict)
-    end
-
-    it "raises an exception if the same dependency is removed twice" do
-      manager = DependencyManager.new
-      manager.remove_dependency(name: "foo", version: "1.0.0")
-      expect { manager.remove_dependency(name: "foo", version: "1.1.0") }.to raise_exception(DependencyManager::DependencyConflict)
-    end
-  end
-
   describe "#all_proposed_dependencies_on_allowlist?" do
     it "returns false if proposed update hasn't been 'allowed' yet" do
       manager = DependencyManager.new
-      manager.add_dependency(name: "foo", version: "1.0.0")
+      manager.change_set.changes << Change.new(Dependency.new("foo"), :patch)
 
       expect(manager.all_proposed_dependencies_on_allowlist?).to eq(false)
     end
@@ -121,8 +31,10 @@ RSpec.describe DependencyManager do
     it "returns false if proposed updates contain a dependency that hasn't been 'allowed' yet, amongst ones that have" do
       manager = DependencyManager.new
       manager.allow_dependency_update(name: "foo", allowed_semver_bumps: %w[patch])
-      manager.add_dependency(name: "foo", version: "1.0.0")
-      manager.add_dependency(name: "something_not_allowed", version: "1.0.0")
+      manager.change_set.changes += [
+        Change.new(Dependency.new("foo"), :patch),
+        Change.new(Dependency.new("something_not_allowed"), :patch),
+      ]
 
       expect(manager.all_proposed_dependencies_on_allowlist?).to eq(false)
     end
@@ -131,10 +43,10 @@ RSpec.describe DependencyManager do
       manager = DependencyManager.new
       manager.allow_dependency_update(name: "foo", allowed_semver_bumps: %w[patch])
       manager.allow_dependency_update(name: "bar", allowed_semver_bumps: %w[patch])
-      manager.remove_dependency(name: "foo", version: "1.0.0")
-      manager.remove_dependency(name: "bar", version: "1.0.0")
-      manager.add_dependency(name: "foo", version: "1.0.1") # allowed
-      manager.add_dependency(name: "bar", version: "2.0.0") # not allowed
+      manager.change_set.changes += [
+        Change.new(Dependency.new("foo"), :patch), # allowed
+        Change.new(Dependency.new("bar"), :major), # not allowed
+      ]
 
       expect(manager.all_proposed_dependencies_on_allowlist?).to eq(true)
     end
@@ -148,7 +60,7 @@ RSpec.describe DependencyManager do
     # dependency, let's not block it here.
     it "returns true if a proposed update is missing from the allowlist altogether" do
       manager = DependencyManager.new
-      manager.add_dependency(name: "foo", version: "1.0.0")
+      manager.change_set.changes << Change.new(Dependency.new("foo"), :major)
 
       expect(manager.all_proposed_updates_semver_allowed?).to eq(true)
     end
@@ -156,8 +68,7 @@ RSpec.describe DependencyManager do
     it "returns true if a proposed update type matches that on the allowlist" do
       manager = DependencyManager.new
       manager.allow_dependency_update(name: "foo", allowed_semver_bumps: %w[patch])
-      manager.remove_dependency(name: "foo", version: "1.0.0")
-      manager.add_dependency(name: "foo", version: "1.0.1")
+      manager.change_set.changes << Change.new(Dependency.new("foo"), :patch)
 
       expect(manager.all_proposed_updates_semver_allowed?).to eq(true)
     end
@@ -165,8 +76,7 @@ RSpec.describe DependencyManager do
     it "returns false if a proposed update type does not match that on the allowlist" do
       manager = DependencyManager.new
       manager.allow_dependency_update(name: "foo", allowed_semver_bumps: %w[patch])
-      manager.remove_dependency(name: "foo", version: "1.0.0")
-      manager.add_dependency(name: "foo", version: "1.1.0")
+      manager.change_set.changes << Change.new(Dependency.new("foo"), :minor)
 
       expect(manager.all_proposed_updates_semver_allowed?).to eq(false)
     end
@@ -175,45 +85,22 @@ RSpec.describe DependencyManager do
       manager = DependencyManager.new
       manager.allow_dependency_update(name: "foo", allowed_semver_bumps: %w[patch minor major])
       manager.allow_dependency_update(name: "bar", allowed_semver_bumps: %w[patch])
-      manager.remove_dependency(name: "foo", version: "1.0.0")
-      manager.remove_dependency(name: "bar", version: "1.0.0")
-      manager.add_dependency(name: "foo", version: "1.1.0") # allowed
-      manager.add_dependency(name: "bar", version: "2.0.0") # not allowed
+      manager.change_set.changes += [
+        Change.new(Dependency.new("foo"), :minor), # allowed
+        Change.new(Dependency.new("bar"), :major), # not allowed
+      ]
 
       expect(manager.all_proposed_updates_semver_allowed?).to eq(false)
     end
   end
 
   describe "#all_proposed_dependencies_are_internal?" do
-    it "returns false if a proposed dependency update is externally owned" do
-      stub_request(:get, "https://rubygems.org/api/v1/gems/foo/owners.yaml")
-        .to_return(
-          status: 200,
-          body: <<~GEM_OWNERS,
-            - id: 123
-              handle: some-malicious-actor
-          GEM_OWNERS
-        )
+    it "delegates to Dependency#internal?" do
+      dependency = Dependency.new("foo")
+      expect(dependency).to receive(:internal?).and_return(true)
 
       manager = DependencyManager.new
-      manager.add_dependency(name: "foo", version: "1.0.0")
-
-      expect(manager.all_proposed_dependencies_are_internal?).to eq(false)
-    end
-
-    it "returns false if a proposed dependency update is owned by govuk" do
-      stub_request(:get, "https://rubygems.org/api/v1/gems/foo/owners.yaml")
-        .to_return(
-          status: 200,
-          body: <<~GEM_OWNERS,
-            - id: 59597
-              handle: govuk
-          GEM_OWNERS
-        )
-
-      manager = DependencyManager.new
-      manager.add_dependency(name: "foo", version: "1.0.0")
-
+      manager.change_set.changes << Change.new(dependency, :major)
       expect(manager.all_proposed_dependencies_are_internal?).to eq(true)
     end
   end
