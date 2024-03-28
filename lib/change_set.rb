@@ -23,7 +23,13 @@ Change = Struct.new(:dependency, :type) do
   end
 end
 
-ChangeSet = Struct.new(:changes) do
+class ChangeSet
+  attr_accessor :changes
+
+  def initialize(changes = nil)
+    @changes = changes.nil? ? [] : changes
+  end
+
   def self.from_commit_message(commit_message)
     commit_message = commit_message
       .split("---", 2)[1]

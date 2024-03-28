@@ -23,62 +23,6 @@ RSpec.describe PullRequest do
     TEXT
   end
 
-  def single_external_dependency_commit
-    <<~TEXT
-      Bump shoulda-matchers from 5.3.0 to 6.0.0
-
-      Bumps [shoulda-matchers](https://github.com/thoughtbot/shoulda-matchers) from 5.3.0 to 6.0.0.
-      - [Release notes](https://github.com/thoughtbot/shoulda-matchers/releases)
-      - [Changelog](https://github.com/thoughtbot/shoulda-matchers/blob/main/CHANGELOG.md)
-      - [Commits](thoughtbot/shoulda-matchers@v5.3.0...v6.0.0)
-
-      ---
-      updated-dependencies:
-      - dependency-name: shoulda-matchers
-        dependency-type: direct:development
-        update-type: version-update:semver-major
-      ...
-
-      Signed-off-by: dependabot[bot] <support@github.com>
-    TEXT
-  end
-
-  def multiple_dependencies_commit
-    <<~TEXT
-      Bump rack, rails and govuk_sidekiq
-
-      Bumps [rack](https://github.com/rack/rack), [rails](https://github.com/rails/rails) and [govuk_sidekiq](https://github.com/alphagov/govuk_sidekiq). These dependencies needed to be updated together.
-
-      Updates `rack` from 1.0.0 to 1.1.0
-      - [Release notes](https://github.com/rack/rack/releases)
-      - [Changelog](https://github.com/rack/rack/blob/main/CHANGELOG.md)
-      - [Commits](rack/rack@v1.0.0...v1.1.0)
-
-      Updates `rails` from 7.0.8 to 7.1.1
-      - [Release notes](https://github.com/rails/rails/releases)
-      - [Commits](rails/rails@v7.0.8...v7.1.1)
-
-      Updates `govuk_sidekiq` from 5.7.0 to 5.8.0
-      - [Changelog](https://github.com/alphagov/govuk_sidekiq/blob/main/CHANGELOG.md)
-      - [Commits](alphagov/govuk_sidekiq@v5.7.0...v5.8.0)
-
-      ---
-      updated-dependencies:
-      - dependency-name: rack
-        dependency-type: direct:development
-        update-type: version-update:semver-minor
-      - dependency-name: rails
-        dependency-type: direct:production
-        update-type: version-update:semver-minor
-      - dependency-name: govuk_sidekiq
-        dependency-type: direct:production
-        update-type: version-update:semver-minor
-      ...
-
-      Signed-off-by: dependabot[bot] <support@github.com>
-    TEXT
-  end
-
   let(:repo_name) { "foo" }
   let(:sha) { "ee241dea8da11aff8e575941c138a7f34ddb1a51" }
   let(:pull_request_api_response) do
@@ -283,8 +227,7 @@ RSpec.describe PullRequest do
     def create_mock_dependency_manager
       mock_dependency_manager = double("DependencyManager", all_proposed_dependencies_on_allowlist?: false)
       allow(mock_dependency_manager).to receive(:allow_dependency_update)
-      allow(mock_dependency_manager).to receive(:add_dependency)
-      allow(mock_dependency_manager).to receive(:remove_dependency)
+      allow(mock_dependency_manager).to receive(:change_set=)
       allow(mock_dependency_manager).to receive(:all_proposed_dependencies_on_allowlist?).and_return(true)
       allow(mock_dependency_manager).to receive(:all_proposed_updates_semver_allowed?).and_return(true)
       mock_dependency_manager
@@ -509,112 +452,14 @@ RSpec.describe PullRequest do
   end
 
   describe "#tell_dependency_manager_what_dependabot_is_changing" do
-    it "parses gemfile lock changes and passes these to DependencyManager" do
-      dependency_manager = double("DependencyManager")
-      api_response = "foo"
-      pull_request = PullRequest.new(api_response, dependency_manager)
-      allow(pull_request).to receive(:commit_message).and_return(single_dependency_commit)
-      allow(pull_request).to receive(:gemfile_lock_changes).and_return(
-        <<~GEMFILE_LOCK_DIFF,
-          govuk_personalisation (0.13.0)
-                  plek (>= 1.9.0)
-                  rails (>= 6, < 8)
-          -    govuk_publishing_components (35.7.0)
-          +    govuk_publishing_components (35.8.0)
-                  govuk_app_config
-                  govuk_personalisation (>= 0.7.0)
-                  kramdown
-        GEMFILE_LOCK_DIFF
-      )
-      expect(dependency_manager).to receive(:remove_dependency).with(
-        name: "govuk_publishing_components",
-        version: "35.7.0",
-      )
-      expect(dependency_manager).to receive(:add_dependency).with(
-        name: "govuk_publishing_components",
-        version: "35.8.0",
-      )
-      pull_request.tell_dependency_manager_what_dependabot_is_changing
-    end
+    it "delegates to ChangeSet.from_commit_message" do
+      pr = PullRequest.new(pull_request_api_response)
 
-    it "only looks at the dependencies listed in the commit message" do
-      dependency_manager = double("DependencyManager")
-      api_response = "foo"
-      pull_request = PullRequest.new(api_response, dependency_manager)
-      allow(pull_request).to receive(:commit_message).and_return(multiple_dependencies_commit)
-      allow(pull_request).to receive(:gemfile_lock_changes).and_return(
-        <<~GEMFILE_LOCK_DIFF,
-          govuk_personalisation (0.13.0)
-                  plek (>= 1.9.0)
-                  rails (>= 6, < 8)
-          -    govuk_publishing_components (35.7.0)
-          +    govuk_publishing_components (35.8.0)
-                  govuk_app_config
-                  govuk_personalisation (>= 0.7.0)
-                  kramdown
-          -    rack (1.0.0)
-          +    rack (1.1.0)
-          -    rails (7.0.8)
-          +    rails (7.1.1)
-          -    govuk_sidekiq (5.7.0)
-          +    govuk_sidekiq (5.8.0)
-        GEMFILE_LOCK_DIFF
-      )
+      commit_message = "foo"
+      expect(pr).to receive(:commit_message).and_return(commit_message)
+      expect(ChangeSet).to receive(:from_commit_message).with(commit_message)
 
-      expect(dependency_manager).to receive(:add_dependency).with(
-        name: "rack",
-        version: "1.1.0",
-      )
-      expect(dependency_manager).to receive(:add_dependency).with(
-        name: "rails",
-        version: "7.1.1",
-      )
-      expect(dependency_manager).to receive(:add_dependency).with(
-        name: "govuk_sidekiq",
-        version: "5.8.0",
-      )
-      expect(dependency_manager).to receive(:remove_dependency).with(
-        name: "rack",
-        version: "1.0.0",
-      )
-      expect(dependency_manager).to receive(:remove_dependency).with(
-        name: "rails",
-        version: "7.0.8",
-      )
-      expect(dependency_manager).not_to receive(:add_dependency).with(
-        name: "govuk_publishing_components",
-        version: "35.8.0",
-      )
-      expect(dependency_manager).not_to receive(:remove_dependency).with(
-        name: "govuk_publishing_components",
-        version: "35.7.0",
-      )
-      pull_request.tell_dependency_manager_what_dependabot_is_changing
-    end
-
-    it "supports hyphenated names" do
-      dependency_manager = double("DependencyManager")
-      api_response = "foo"
-      pull_request = PullRequest.new(api_response, dependency_manager)
-      allow(pull_request).to receive(:commit_message).and_return(single_external_dependency_commit)
-      allow(pull_request).to receive(:gemfile_lock_changes).and_return(
-        <<~GEMFILE_LOCK_DIFF,
-          -    shoulda-matchers (5.3.0)
-          +    shoulda-matchers (6.0.0)
-        GEMFILE_LOCK_DIFF
-      )
-
-      expect(dependency_manager).to receive(:remove_dependency).with(
-        name: "shoulda-matchers",
-        version: "5.3.0",
-      )
-
-      expect(dependency_manager).to receive(:add_dependency).with(
-        name: "shoulda-matchers",
-        version: "6.0.0",
-      )
-
-      pull_request.tell_dependency_manager_what_dependabot_is_changing
+      pr.tell_dependency_manager_what_dependabot_is_changing
     end
   end
 
