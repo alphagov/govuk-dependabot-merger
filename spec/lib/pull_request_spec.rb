@@ -451,18 +451,6 @@ RSpec.describe PullRequest do
     end
   end
 
-  describe "#tell_dependency_manager_what_dependabot_is_changing" do
-    it "delegates to ChangeSet.from_commit_message" do
-      pr = PullRequest.new(pull_request_api_response)
-
-      commit_message = "foo"
-      expect(pr).to receive(:commit_message).and_return(commit_message)
-      expect(ChangeSet).to receive(:from_commit_message).with(commit_message)
-
-      pr.tell_dependency_manager_what_dependabot_is_changing
-    end
-  end
-
   describe "#merge!" do
     it "should make an API call to merge the PR" do
       pr = PullRequest.new(pull_request_api_response)

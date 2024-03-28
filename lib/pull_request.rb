@@ -34,7 +34,7 @@ class PullRequest
       reasons_not_to_merge << "The remote .govuk_dependabot_merger.yml file does not have the expected YAML structure."
     else
       tell_dependency_manager_what_dependencies_are_allowed
-      tell_dependency_manager_what_dependabot_is_changing
+      dependency_manager.change_set = ChangeSet.from_commit_message(commit_message)
 
       if !dependency_manager.all_proposed_dependencies_on_allowlist?
         reasons_not_to_merge << "PR bumps a dependency that is not on the allowlist."
@@ -135,10 +135,6 @@ class PullRequest
         allowed_semver_bumps: dependency["allowed_semver_bumps"],
       )
     end
-  end
-
-  def tell_dependency_manager_what_dependabot_is_changing
-    dependency_manager.change_set = ChangeSet.from_commit_message(commit_message)
   end
 
 private
