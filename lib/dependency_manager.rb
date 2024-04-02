@@ -1,3 +1,5 @@
+require_relative "./change_set"
+
 class DependencyManager
   attr_reader :allowed_dependency_updates
   attr_accessor :change_set
