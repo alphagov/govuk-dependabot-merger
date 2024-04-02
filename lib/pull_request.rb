@@ -1,4 +1,5 @@
 require "yaml"
+require_relative "./change_set"
 require_relative "./dependency_manager"
 require_relative "./github_client"
 require_relative "./version"
