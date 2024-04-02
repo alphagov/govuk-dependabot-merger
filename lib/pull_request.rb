@@ -120,7 +120,10 @@ class PullRequest
     @remote_config ||= GitHubClient.instance
       .contents(
         "alphagov/#{@api_response.base.repo.name}",
-        path: ".govuk_dependabot_merger.yml",
+        {
+          accept: "application/vnd.github.raw",
+          path: ".govuk_dependabot_merger.yml",
+        },
       )
       .then { |content| YAML.safe_load content }
   rescue Octokit::NotFound
