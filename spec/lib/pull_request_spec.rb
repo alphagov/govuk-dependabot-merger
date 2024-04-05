@@ -106,9 +106,6 @@ RSpec.describe PullRequest do
     def create_pull_request_instance
       mock = instance_double("PolicyManager")
       allow(mock).to receive(:change_set=)
-      allow(mock).to receive(:remote_config_exists?).and_return(true)
-      allow(mock).to receive(:valid_remote_config_syntax?).and_return(true)
-      allow(mock).to receive(:remote_config_api_version_supported?).and_return(true)
       allow(mock).to receive(:all_proposed_dependencies_on_allowlist?).and_return(true)
       allow(mock).to receive(:all_proposed_updates_semver_allowed?).and_return(true)
       allow(mock).to receive(:all_proposed_dependencies_are_internal?).and_return(true)
@@ -136,48 +133,6 @@ RSpec.describe PullRequest do
       pr.is_auto_mergeable?
       expect(pr.reasons_not_to_merge).to eq([
         "PR changes files that should not be changed.",
-      ])
-    end
-
-    it "should make a call to PolicyManager.remote_config_exists?" do
-      stub_successful_check_run
-      stub_remote_commit(head_commit_api_response)
-
-      pr = create_pull_request_instance
-      allow(pr.policy_manager).to receive(:remote_config_exists?).and_return(false)
-      expect(pr.policy_manager).to receive(:remote_config_exists?)
-
-      pr.is_auto_mergeable?
-      expect(pr.reasons_not_to_merge).to eq([
-        "The remote .govuk_dependabot_merger.yml file is missing.",
-      ])
-    end
-
-    it "should make a call to PolicyManager.valid_remote_config_syntax?" do
-      stub_successful_check_run
-      stub_remote_commit(head_commit_api_response)
-
-      pr = create_pull_request_instance
-      allow(pr.policy_manager).to receive(:valid_remote_config_syntax?).and_return(false)
-      expect(pr.policy_manager).to receive(:valid_remote_config_syntax?)
-
-      pr.is_auto_mergeable?
-      expect(pr.reasons_not_to_merge).to eq([
-        "The remote .govuk_dependabot_merger.yml YAML syntax is corrupt.",
-      ])
-    end
-
-    it "should make a call to PolicyManager.remote_config_api_version_supported?" do
-      stub_successful_check_run
-      stub_remote_commit(head_commit_api_response)
-
-      pr = create_pull_request_instance
-      allow(pr.policy_manager).to receive(:remote_config_api_version_supported?).and_return(false)
-      expect(pr.policy_manager).to receive(:remote_config_api_version_supported?)
-
-      pr.is_auto_mergeable?
-      expect(pr.reasons_not_to_merge).to eq([
-        "The remote .govuk_dependabot_merger.yml file is using an unsupported API version.",
       ])
     end
 

@@ -28,12 +28,6 @@ class PullRequest
       reasons_not_to_merge << "CI workflow doesn't exist."
     elsif !validate_ci_passes
       reasons_not_to_merge << "CI workflow is failing."
-    elsif !policy_manager.remote_config_exists?
-      reasons_not_to_merge << "The remote .govuk_dependabot_merger.yml file is missing."
-    elsif !policy_manager.valid_remote_config_syntax?
-      reasons_not_to_merge << "The remote .govuk_dependabot_merger.yml YAML syntax is corrupt."
-    elsif !policy_manager.remote_config_api_version_supported?
-      reasons_not_to_merge << "The remote .govuk_dependabot_merger.yml file is using an unsupported API version."
     else
       policy_manager.change_set = ChangeSet.from_commit_message(commit_message)
 
