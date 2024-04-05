@@ -2,7 +2,6 @@ require "yaml"
 require_relative "./change_set"
 require_relative "./dependency_manager"
 require_relative "./github_client"
-require_relative "./version"
 
 class PullRequest
   class CannotApproveException < StandardError; end
@@ -10,9 +9,8 @@ class PullRequest
 
   attr_reader :dependency_manager, :reasons_not_to_merge
 
-  def initialize(api_response, remote_config, dependency_manager: DependencyManager.new)
+  def initialize(api_response, dependency_manager = DependencyManager.new)
     @api_response = api_response
-    @remote_config = remote_config
     @dependency_manager = dependency_manager
     @reasons_not_to_merge = []
   end
@@ -30,15 +28,14 @@ class PullRequest
       reasons_not_to_merge << "CI workflow doesn't exist."
     elsif !validate_ci_passes
       reasons_not_to_merge << "CI workflow is failing."
+    elsif !dependency_manager.remote_config_exists?
+      reasons_not_to_merge << "The remote .govuk_dependabot_merger.yml file is missing."
+    elsif !dependency_manager.valid_remote_config?
+      reasons_not_to_merge << "The remote .govuk_dependabot_merger.yml file does not have the expected YAML structure."
     else
-      dependency_manager.determine_allowed_dependencies(@remote_config)
       dependency_manager.change_set = ChangeSet.from_commit_message(commit_message)
 
-      if !dependency_manager.remote_config_exists?
-        reasons_not_to_merge << "The remote .govuk_dependabot_merger.yml file is missing."
-      elsif !dependency_manager.valid_remote_config?
-        reasons_not_to_merge << "The remote .govuk_dependabot_merger.yml file does not have the expected YAML structure."
-      elsif !dependency_manager.all_proposed_dependencies_on_allowlist?
+      if !dependency_manager.all_proposed_dependencies_on_allowlist?
         reasons_not_to_merge << "PR bumps a dependency that is not on the allowlist."
       elsif !dependency_manager.all_proposed_updates_semver_allowed?
         reasons_not_to_merge << "PR bumps a dependency to a higher semver than is allowed."

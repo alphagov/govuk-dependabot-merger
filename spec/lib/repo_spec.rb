@@ -5,6 +5,11 @@ RSpec.describe Repo do
 
   let(:repo_name) { "foo" }
   let(:external_config_file_api_url) { "https://api.github.com/repos/alphagov/#{repo_name}/contents/.govuk_dependabot_merger.yml" }
+  let(:arbitrary_config) do
+    <<~EXTERNAL_CONFIG_YAML
+      foo: bar
+    EXTERNAL_CONFIG_YAML
+  end
 
   describe ".all" do
     it "should return an array of Repo objects" do
@@ -16,11 +21,8 @@ RSpec.describe Repo do
 
   describe "#govuk_dependabot_merger_config" do
     it "should return the Dependabot Merger config for the repo" do
-      config = <<~EXTERNAL_CONFIG_YAML
-        foo: bar
-      EXTERNAL_CONFIG_YAML
       stub_request(:get, external_config_file_api_url)
-        .to_return(status: 200, body: config.to_json, headers: { "Content-Type": "application/json" })
+        .to_return(status: 200, body: arbitrary_config.to_json, headers: { "Content-Type": "application/json" })
 
       repo = Repo.new(repo_name)
       expect(repo.govuk_dependabot_merger_config).to eq({
@@ -57,7 +59,8 @@ RSpec.describe Repo do
 
   describe "#dependabot_pull_requests" do
     it "should return an array of PullRequest objects" do
-      stub_request(:get, external_config_file_api_url).to_return(status: 200, body: "")
+      stub_request(:get, external_config_file_api_url)
+        .to_return(status: 200, body: arbitrary_config.to_json, headers: { "Content-Type": "application/json" })
       stub_request(:get, "https://api.github.com/repos/alphagov/#{repo_name}/pulls?sort=created&state=open")
         .to_return(status: 200, body: [pull_request_api_response, pull_request_api_response].to_json, headers: { "Content-Type": "application/json" })
 
@@ -67,7 +70,8 @@ RSpec.describe Repo do
     end
 
     it "should filter out any PRs not raised by Dependabot" do
-      stub_request(:get, external_config_file_api_url).to_return(status: 200, body: "")
+      stub_request(:get, external_config_file_api_url)
+        .to_return(status: 200, body: arbitrary_config.to_json, headers: { "Content-Type": "application/json" })
       non_dependabot_response = pull_request_api_response({ user: { login: "foo" } })
 
       stub_request(:get, "https://api.github.com/repos/alphagov/#{repo_name}/pulls?sort=created&state=open")

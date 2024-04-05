@@ -5,22 +5,11 @@ class DependencyManager
   attr_reader :allowed_dependency_updates
   attr_accessor :change_set
 
-  def initialize
+  def initialize(remote_config = {})
+    @remote_config = remote_config
     @allowed_dependency_updates = []
     @change_set = ChangeSet.new
-  end
-
-  def determine_allowed_dependencies(remote_config)
-    @remote_config = remote_config
-
-    if remote_config["auto_merge"]
-      remote_config["auto_merge"].each do |dependency|
-        allow_dependency_update(
-          name: dependency["dependency"],
-          allowed_semver_bumps: dependency["allowed_semver_bumps"],
-        )
-      end
-    end
+    determine_allowed_dependencies
   end
 
   def remote_config_exists?
@@ -51,5 +40,18 @@ class DependencyManager
 
   def all_proposed_dependencies_are_internal?
     change_set.changes.all? { |change| change.dependency.internal? }
+  end
+
+private
+
+  def determine_allowed_dependencies
+    if @remote_config["auto_merge"]
+      @remote_config["auto_merge"].each do |dependency|
+        allow_dependency_update(
+          name: dependency["dependency"],
+          allowed_semver_bumps: dependency["allowed_semver_bumps"],
+        )
+      end
+    end
   end
 end

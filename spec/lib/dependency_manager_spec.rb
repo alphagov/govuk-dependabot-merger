@@ -18,10 +18,8 @@ RSpec.describe DependencyManager do
         },
       ])
     end
-  end
 
-  describe "#determine_allowed_dependencies" do
-    it "correctly interprets remote config" do
+    it "works with remote config passed on initialisation" do
       remote_config = {
         "api_version" => 1,
         "auto_merge" => [
@@ -36,8 +34,7 @@ RSpec.describe DependencyManager do
         ],
       }
 
-      manager = DependencyManager.new
-      manager.determine_allowed_dependencies(remote_config)
+      manager = DependencyManager.new(remote_config)
       expect(manager.allowed_dependency_updates).to eq([
         {
           name: "govuk_publishing_components",
@@ -55,17 +52,13 @@ RSpec.describe DependencyManager do
     it "returns false if config doesn't exist" do
       remote_config = { "error" => "404" }
 
-      manager = DependencyManager.new
-      manager.determine_allowed_dependencies(remote_config)
-      expect(manager.remote_config_exists?).to eq(false)
+      expect(DependencyManager.new(remote_config).remote_config_exists?).to eq(false)
     end
 
     it "returns true if config exists" do
       remote_config = { "foo" => "bar" }
 
-      manager = DependencyManager.new
-      manager.determine_allowed_dependencies(remote_config)
-      expect(manager.remote_config_exists?).to eq(true)
+      expect(DependencyManager.new(remote_config).remote_config_exists?).to eq(true)
     end
   end
 
@@ -73,25 +66,19 @@ RSpec.describe DependencyManager do
     it "returns false if config has a syntax error" do
       remote_config = { "error" => "syntax" }
 
-      manager = DependencyManager.new
-      manager.determine_allowed_dependencies(remote_config)
-      expect(manager.valid_remote_config?).to eq(false)
+      expect(DependencyManager.new(remote_config).valid_remote_config?).to eq(false)
     end
 
     it "returns false if config is on a different major version" do
       remote_config = { "api_version" => -1 }
 
-      manager = DependencyManager.new
-      manager.determine_allowed_dependencies(remote_config)
-      expect(manager.valid_remote_config?).to eq(false)
+      expect(DependencyManager.new(remote_config).valid_remote_config?).to eq(false)
     end
 
     it "returns true if config looks valid" do
       remote_config = { "api_version" => 1 }
 
-      manager = DependencyManager.new
-      manager.determine_allowed_dependencies(remote_config)
-      expect(manager.valid_remote_config?).to eq(true)
+      expect(DependencyManager.new(remote_config).valid_remote_config?).to eq(true)
     end
   end
 
