@@ -1,4 +1,5 @@
 require_relative "./bank_holidays"
+require_relative "./policy_manager"
 require_relative "./repo"
 
 module AutoMerger
@@ -12,16 +13,24 @@ module AutoMerger
 
   def self.merge_dependabot_prs
     Repo.all.each do |repo|
-      if repo.dependabot_pull_requests.count.zero?
+      policy_manager = PolicyManager.new(repo.govuk_dependabot_merger_config)
+
+      if !policy_manager.remote_config_exists?
+        puts "The remote .govuk_dependabot_merger.yml file is missing."
+      elsif !policy_manager.valid_remote_config_syntax?
+        puts "The remote .govuk_dependabot_merger.yml YAML syntax is corrupt."
+      elsif !policy_manager.remote_config_api_version_supported?
+        puts "The remote .govuk_dependabot_merger.yml file is using an unsupported API version."
+      elsif repo.dependabot_pull_requests.count.zero?
         puts "No Dependabot PRs found for repo '#{repo.name}'."
       else
         puts "#{repo.dependabot_pull_requests.count} Dependabot PRs found for repo '#{repo.name}':"
-      end
 
-      repo.dependabot_pull_requests.each do |pr|
-        puts "  - Inspecting #{repo.name}##{pr.number}..."
+        repo.dependabot_pull_requests.each do |pr|
+          puts "  - Inspecting #{repo.name}##{pr.number}..."
 
-        merge_dependabot_pr(pr, dry_run: false)
+          merge_dependabot_pr(pr, dry_run: false)
+        end
       end
     end
   end
