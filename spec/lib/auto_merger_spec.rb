@@ -15,6 +15,26 @@ RSpec.describe AutoMerger do
     end
   end
 
+  describe ".merge_dependabot_prs" do
+    it "iterates through all Dependabot PRs of all Repos" do
+      mock_pr_1 = instance_double("PullRequest", number: 1)
+      mock_pr_2 = instance_double("PullRequest", number: 2)
+      mock_pr_3 = instance_double("PullRequest", number: 3)
+      mock_repo_1 = instance_double("Repo", name: "Repo 1", dependabot_pull_requests: [mock_pr_1])
+      mock_repo_2 = instance_double("Repo", name: "Repo 2", dependabot_pull_requests: [mock_pr_2, mock_pr_3])
+      allow(Repo).to receive(:all).and_return([
+        mock_repo_1,
+        mock_repo_2,
+      ])
+
+      expect(AutoMerger).to receive(:merge_dependabot_pr).with(mock_pr_1, dry_run: false)
+      expect(AutoMerger).to receive(:merge_dependabot_pr).with(mock_pr_2, dry_run: false)
+      expect(AutoMerger).to receive(:merge_dependabot_pr).with(mock_pr_3, dry_run: false)
+
+      AutoMerger.merge_dependabot_prs
+    end
+  end
+
   describe ".merge_dependabot_pr" do
     it "avoids approving or merging when in dry run mode" do
       mock_pr = instance_double("PullRequest")
