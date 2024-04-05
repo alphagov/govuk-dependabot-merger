@@ -145,22 +145,28 @@ RSpec.describe PullRequest do
       ])
     end
 
-    it "should make a call to validate_external_config_file_exists" do
+    it "should make a call to DependencyManager.remote_config_exists?" do
       stub_successful_check_run
+      stub_remote_commit(head_commit_api_response)
+
       pr = create_pull_request_instance
-      allow(pr).to receive(:validate_external_config_file_exists).and_return(false)
-      expect(pr).to receive(:validate_external_config_file_exists)
+      allow(pr.dependency_manager).to receive(:remote_config_exists?).and_return(false)
+      expect(pr.dependency_manager).to receive(:remote_config_exists?)
+
       pr.is_auto_mergeable?
       expect(pr.reasons_not_to_merge).to eq([
         "The remote .govuk_dependabot_merger.yml file is missing.",
       ])
     end
 
-    it "should make a call to validate_external_config_file_contents" do
+    it "should make a call to DependencyManager.valid_remote_config?" do
       stub_successful_check_run
+      stub_remote_commit(head_commit_api_response)
+
       pr = create_pull_request_instance
-      allow(pr).to receive(:validate_external_config_file_contents).and_return(false)
-      expect(pr).to receive(:validate_external_config_file_contents)
+      allow(pr.dependency_manager).to receive(:valid_remote_config?).and_return(false)
+      expect(pr.dependency_manager).to receive(:valid_remote_config?)
+
       pr.is_auto_mergeable?
       expect(pr.reasons_not_to_merge).to eq([
         "The remote .govuk_dependabot_merger.yml file does not have the expected YAML structure.",
@@ -371,32 +377,6 @@ RSpec.describe PullRequest do
 
       pr = PullRequest.new(pull_request_api_response, remote_config)
       expect(pr.validate_ci_passes).to eq(false)
-    end
-  end
-
-  describe "#validate_external_config_file_exists" do
-    it "returns false if there is no automerge config file in the repo" do
-      pr = PullRequest.new(pull_request_api_response, { "error" => "404" })
-      expect(pr.validate_external_config_file_exists).to eq(false)
-    end
-
-    it "returns true if the automerge config file exists" do
-      pr = create_pull_request_instance
-      expect(pr.validate_external_config_file_exists).to eq(true)
-    end
-  end
-
-  describe "#validate_external_config_file_contents" do
-    it "returns false if the automerge config file is on a different version" do
-      remote_config = { "api_version" => -1 }
-
-      pr = PullRequest.new(pull_request_api_response, remote_config)
-      expect(pr.validate_external_config_file_contents).to eq(false)
-    end
-
-    it "returns true if the automerge config file contains nothing unexpected" do
-      pr = create_pull_request_instance
-      expect(pr.validate_external_config_file_contents).to eq(true)
     end
   end
 

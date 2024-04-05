@@ -1,4 +1,5 @@
 require_relative "./change_set"
+require_relative "./version"
 
 class DependencyManager
   attr_reader :allowed_dependency_updates
@@ -10,12 +11,25 @@ class DependencyManager
   end
 
   def determine_allowed_dependencies(remote_config)
-    remote_config["auto_merge"].each do |dependency|
-      allow_dependency_update(
-        name: dependency["dependency"],
-        allowed_semver_bumps: dependency["allowed_semver_bumps"],
-      )
+    @remote_config = remote_config
+
+    if remote_config["auto_merge"]
+      remote_config["auto_merge"].each do |dependency|
+        allow_dependency_update(
+          name: dependency["dependency"],
+          allowed_semver_bumps: dependency["allowed_semver_bumps"],
+        )
+      end
     end
+  end
+
+  def remote_config_exists?
+    @remote_config["error"] != "404"
+  end
+
+  def valid_remote_config?
+    @remote_config["error"] != "syntax" &&
+      @remote_config["api_version"] == DependabotAutoMerge::VERSION
   end
 
   def allow_dependency_update(name:, allowed_semver_bumps:)

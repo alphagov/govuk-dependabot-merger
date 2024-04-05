@@ -51,6 +51,50 @@ RSpec.describe DependencyManager do
     end
   end
 
+  describe "#remote_config_exists?" do
+    it "returns false if config doesn't exist" do
+      remote_config = { "error" => "404" }
+
+      manager = DependencyManager.new
+      manager.determine_allowed_dependencies(remote_config)
+      expect(manager.remote_config_exists?).to eq(false)
+    end
+
+    it "returns true if config exists" do
+      remote_config = { "foo" => "bar" }
+
+      manager = DependencyManager.new
+      manager.determine_allowed_dependencies(remote_config)
+      expect(manager.remote_config_exists?).to eq(true)
+    end
+  end
+
+  describe "#valid_remote_config?" do
+    it "returns false if config has a syntax error" do
+      remote_config = { "error" => "syntax" }
+
+      manager = DependencyManager.new
+      manager.determine_allowed_dependencies(remote_config)
+      expect(manager.valid_remote_config?).to eq(false)
+    end
+
+    it "returns false if config is on a different major version" do
+      remote_config = { "api_version" => -1 }
+
+      manager = DependencyManager.new
+      manager.determine_allowed_dependencies(remote_config)
+      expect(manager.valid_remote_config?).to eq(false)
+    end
+
+    it "returns true if config looks valid" do
+      remote_config = { "api_version" => 1 }
+
+      manager = DependencyManager.new
+      manager.determine_allowed_dependencies(remote_config)
+      expect(manager.valid_remote_config?).to eq(true)
+    end
+  end
+
   describe "#all_proposed_dependencies_on_allowlist?" do
     it "returns false if proposed update hasn't been 'allowed' yet" do
       manager = DependencyManager.new
