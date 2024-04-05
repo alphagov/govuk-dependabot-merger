@@ -104,7 +104,7 @@ RSpec.describe PullRequest do
 
   describe "#is_auto_mergeable?" do
     def create_pull_request_instance
-      mock = instance_double("DependencyManager")
+      mock = instance_double("PolicyManager")
       allow(mock).to receive(:change_set=)
       allow(mock).to receive(:remote_config_exists?).and_return(true)
       allow(mock).to receive(:valid_remote_config_syntax?).and_return(true)
@@ -139,13 +139,13 @@ RSpec.describe PullRequest do
       ])
     end
 
-    it "should make a call to DependencyManager.remote_config_exists?" do
+    it "should make a call to PolicyManager.remote_config_exists?" do
       stub_successful_check_run
       stub_remote_commit(head_commit_api_response)
 
       pr = create_pull_request_instance
-      allow(pr.dependency_manager).to receive(:remote_config_exists?).and_return(false)
-      expect(pr.dependency_manager).to receive(:remote_config_exists?)
+      allow(pr.policy_manager).to receive(:remote_config_exists?).and_return(false)
+      expect(pr.policy_manager).to receive(:remote_config_exists?)
 
       pr.is_auto_mergeable?
       expect(pr.reasons_not_to_merge).to eq([
@@ -153,13 +153,13 @@ RSpec.describe PullRequest do
       ])
     end
 
-    it "should make a call to DependencyManager.valid_remote_config_syntax?" do
+    it "should make a call to PolicyManager.valid_remote_config_syntax?" do
       stub_successful_check_run
       stub_remote_commit(head_commit_api_response)
 
       pr = create_pull_request_instance
-      allow(pr.dependency_manager).to receive(:valid_remote_config_syntax?).and_return(false)
-      expect(pr.dependency_manager).to receive(:valid_remote_config_syntax?)
+      allow(pr.policy_manager).to receive(:valid_remote_config_syntax?).and_return(false)
+      expect(pr.policy_manager).to receive(:valid_remote_config_syntax?)
 
       pr.is_auto_mergeable?
       expect(pr.reasons_not_to_merge).to eq([
@@ -167,13 +167,13 @@ RSpec.describe PullRequest do
       ])
     end
 
-    it "should make a call to DependencyManager.remote_config_api_version_supported?" do
+    it "should make a call to PolicyManager.remote_config_api_version_supported?" do
       stub_successful_check_run
       stub_remote_commit(head_commit_api_response)
 
       pr = create_pull_request_instance
-      allow(pr.dependency_manager).to receive(:remote_config_api_version_supported?).and_return(false)
-      expect(pr.dependency_manager).to receive(:remote_config_api_version_supported?)
+      allow(pr.policy_manager).to receive(:remote_config_api_version_supported?).and_return(false)
+      expect(pr.policy_manager).to receive(:remote_config_api_version_supported?)
 
       pr.is_auto_mergeable?
       expect(pr.reasons_not_to_merge).to eq([
@@ -181,13 +181,13 @@ RSpec.describe PullRequest do
       ])
     end
 
-    it "should make a call to DependencyManager.all_proposed_dependencies_on_allowlist?" do
+    it "should make a call to PolicyManager.all_proposed_dependencies_on_allowlist?" do
       stub_successful_check_run
       stub_remote_commit(head_commit_api_response)
 
       pr = create_pull_request_instance
-      allow(pr.dependency_manager).to receive(:all_proposed_dependencies_on_allowlist?).and_return(false)
-      expect(pr.dependency_manager).to receive(:all_proposed_dependencies_on_allowlist?)
+      allow(pr.policy_manager).to receive(:all_proposed_dependencies_on_allowlist?).and_return(false)
+      expect(pr.policy_manager).to receive(:all_proposed_dependencies_on_allowlist?)
 
       pr.is_auto_mergeable?
       expect(pr.reasons_not_to_merge).to eq([
@@ -195,13 +195,13 @@ RSpec.describe PullRequest do
       ])
     end
 
-    it "should make a call to DependencyManager.all_proposed_updates_semver_allowed?" do
+    it "should make a call to PolicyManager.all_proposed_updates_semver_allowed?" do
       stub_successful_check_run
       stub_remote_commit(head_commit_api_response)
 
       pr = create_pull_request_instance
-      allow(pr.dependency_manager).to receive(:all_proposed_updates_semver_allowed?).and_return(false)
-      expect(pr.dependency_manager).to receive(:all_proposed_updates_semver_allowed?)
+      allow(pr.policy_manager).to receive(:all_proposed_updates_semver_allowed?).and_return(false)
+      expect(pr.policy_manager).to receive(:all_proposed_updates_semver_allowed?)
 
       pr.is_auto_mergeable?
       expect(pr.reasons_not_to_merge).to eq([
@@ -209,13 +209,13 @@ RSpec.describe PullRequest do
       ])
     end
 
-    it "should make a call to DependencyManager.all_proposed_dependencies_are_internal?" do
+    it "should make a call to PolicyManager.all_proposed_dependencies_are_internal?" do
       stub_successful_check_run
       stub_remote_commit(head_commit_api_response)
 
       pr = create_pull_request_instance
-      allow(pr.dependency_manager).to receive(:all_proposed_dependencies_are_internal?).and_return(false)
-      expect(pr.dependency_manager).to receive(:all_proposed_dependencies_are_internal?)
+      allow(pr.policy_manager).to receive(:all_proposed_dependencies_are_internal?).and_return(false)
+      expect(pr.policy_manager).to receive(:all_proposed_dependencies_are_internal?)
 
       pr.is_auto_mergeable?
       expect(pr.reasons_not_to_merge).to eq([

@@ -1,7 +1,7 @@
 require_relative "./change_set"
 require_relative "./version"
 
-class DependencyManager
+class PolicyManager
   attr_reader :allowed_dependency_updates
   attr_accessor :change_set
 

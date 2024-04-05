@@ -1,17 +1,17 @@
 require "yaml"
 require_relative "./change_set"
-require_relative "./dependency_manager"
 require_relative "./github_client"
+require_relative "./policy_manager"
 
 class PullRequest
   class CannotApproveException < StandardError; end
   class UnexpectedGitHubApiResponse < StandardError; end
 
-  attr_reader :dependency_manager, :reasons_not_to_merge
+  attr_reader :policy_manager, :reasons_not_to_merge
 
-  def initialize(api_response, dependency_manager = DependencyManager.new)
+  def initialize(api_response, policy_manager = PolicyManager.new)
     @api_response = api_response
-    @dependency_manager = dependency_manager
+    @policy_manager = policy_manager
     @reasons_not_to_merge = []
   end
 
@@ -28,20 +28,20 @@ class PullRequest
       reasons_not_to_merge << "CI workflow doesn't exist."
     elsif !validate_ci_passes
       reasons_not_to_merge << "CI workflow is failing."
-    elsif !dependency_manager.remote_config_exists?
+    elsif !policy_manager.remote_config_exists?
       reasons_not_to_merge << "The remote .govuk_dependabot_merger.yml file is missing."
-    elsif !dependency_manager.valid_remote_config_syntax?
+    elsif !policy_manager.valid_remote_config_syntax?
       reasons_not_to_merge << "The remote .govuk_dependabot_merger.yml YAML syntax is corrupt."
-    elsif !dependency_manager.remote_config_api_version_supported?
+    elsif !policy_manager.remote_config_api_version_supported?
       reasons_not_to_merge << "The remote .govuk_dependabot_merger.yml file is using an unsupported API version."
     else
-      dependency_manager.change_set = ChangeSet.from_commit_message(commit_message)
+      policy_manager.change_set = ChangeSet.from_commit_message(commit_message)
 
-      if !dependency_manager.all_proposed_dependencies_on_allowlist?
+      if !policy_manager.all_proposed_dependencies_on_allowlist?
         reasons_not_to_merge << "PR bumps a dependency that is not on the allowlist."
-      elsif !dependency_manager.all_proposed_updates_semver_allowed?
+      elsif !policy_manager.all_proposed_updates_semver_allowed?
         reasons_not_to_merge << "PR bumps a dependency to a higher semver than is allowed."
-      elsif !dependency_manager.all_proposed_dependencies_are_internal?
+      elsif !policy_manager.all_proposed_dependencies_are_internal?
         reasons_not_to_merge << "PR bumps an external dependency."
       end
     end

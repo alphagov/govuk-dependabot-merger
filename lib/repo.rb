@@ -1,6 +1,6 @@
 require "yaml"
-require_relative "./dependency_manager"
 require_relative "./github_client"
+require_relative "./policy_manager"
 require_relative "./pull_request"
 
 Repo = Struct.new(:name) do
@@ -29,10 +29,10 @@ Repo = Struct.new(:name) do
       .instance
       .pull_requests("alphagov/#{name}", state: :open, sort: :created)
       .select { |api_response| api_response.user.login == "dependabot[bot]" }
-      .map { |api_response| PullRequest.new(api_response, DependencyManager.new(govuk_dependabot_merger_config)) }
+      .map { |api_response| PullRequest.new(api_response, PolicyManager.new(govuk_dependabot_merger_config)) }
   end
 
   def dependabot_pull_request(pr_number)
-    PullRequest.new(GitHubClient.instance.pull_request("alphagov/#{name}", pr_number), DependencyManager.new(govuk_dependabot_merger_config))
+    PullRequest.new(GitHubClient.instance.pull_request("alphagov/#{name}", pr_number), PolicyManager.new(govuk_dependabot_merger_config))
   end
 end
