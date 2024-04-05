@@ -17,41 +17,23 @@ RSpec.describe Repo do
   describe "#govuk_dependabot_merger_config" do
     it "should return the Dependabot Merger config for the repo" do
       config = <<~EXTERNAL_CONFIG_YAML
-        api_version: 1
-        auto_merge:
-          - dependency: govuk_publishing_components
-            allowed_semver_bumps:
-              - patch
-              - minor
+        foo: bar
       EXTERNAL_CONFIG_YAML
       stub_request(:get, external_config_file_api_url)
         .to_return(status: 200, body: config.to_json, headers: { "Content-Type": "application/json" })
 
       repo = Repo.new(repo_name)
       expect(repo.govuk_dependabot_merger_config).to eq({
-        "api_version" => 1,
-        "auto_merge" => [
-          {
-            "allowed_semver_bumps" => %w[patch minor],
-            "dependency" => "govuk_publishing_components",
-          },
-        ],
+        "foo" => "bar",
       })
     end
 
     it "should return an error hash if the YAML is malformed" do
       config = <<~EXTERNAL_CONFIG_YAML
-        api_version: 1
-        auto_merge:
-          - dependency: govuk_publishing_components
-            allowed_semver_bumps:
-              - patch
-              - minor
-        # note that the below is outdented too far
-        - dependency: rubocop-govuk
-          allowed_semver_bumps:
-            - patch
-            - minor
+        foo:
+          - baz
+        - bam
+        # note that the above is outdented too far
       EXTERNAL_CONFIG_YAML
       stub_request(:get, external_config_file_api_url)
         .to_return(status: 200, body: config.to_json, headers: { "Content-Type": "application/json" })
