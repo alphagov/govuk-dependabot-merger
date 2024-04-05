@@ -3,6 +3,9 @@ require_relative "../../lib/repo"
 RSpec.describe Repo do
   before { set_up_mock_token }
 
+  let(:repo_name) { "foo" }
+  let(:external_config_file_api_url) { "https://api.github.com/repos/alphagov/#{repo_name}/contents/.govuk_dependabot_merger.yml" }
+
   describe ".all" do
     it "should return an array of Repo objects" do
       repos = Repo.all(File.join(File.dirname(__FILE__), "../config/test_repos_opted_in.yml"))
@@ -12,9 +15,6 @@ RSpec.describe Repo do
   end
 
   describe "#govuk_dependabot_merger_config" do
-    let(:repo_name) { "foo" }
-    let(:external_config_file_api_url) { "https://api.github.com/repos/alphagov/#{repo_name}/contents/.govuk_dependabot_merger.yml" }
-
     it "should return the Dependabot Merger config for the repo" do
       config = <<~EXTERNAL_CONFIG_YAML
         api_version: 1
@@ -75,7 +75,7 @@ RSpec.describe Repo do
 
   describe "#dependabot_pull_requests" do
     it "should return an array of PullRequest objects" do
-      repo_name = "foo"
+      stub_request(:get, external_config_file_api_url).to_return(status: 200, body: "")
       stub_request(:get, "https://api.github.com/repos/alphagov/#{repo_name}/pulls?sort=created&state=open")
         .to_return(status: 200, body: [pull_request_api_response, pull_request_api_response].to_json, headers: { "Content-Type": "application/json" })
 
@@ -85,7 +85,7 @@ RSpec.describe Repo do
     end
 
     it "should filter out any PRs not raised by Dependabot" do
-      repo_name = "foo"
+      stub_request(:get, external_config_file_api_url).to_return(status: 200, body: "")
       non_dependabot_response = pull_request_api_response({ user: { login: "foo" } })
 
       stub_request(:get, "https://api.github.com/repos/alphagov/#{repo_name}/pulls?sort=created&state=open")
