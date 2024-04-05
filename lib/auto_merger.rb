@@ -21,15 +21,23 @@ module AutoMerger
       repo.dependabot_pull_requests.each do |pr|
         puts "  - Inspecting #{repo.name}##{pr.number}..."
 
-        if pr.is_auto_mergeable?
-          puts "    ...approving! ✅"
-          pr.approve!
-          puts "    ...merging! 🎉"
-          pr.merge!
-        else
-          puts "    ...not auto-mergeable: #{pr.reasons_not_to_merge.join(' ')} Skipping."
-        end
+        merge_dependabot_pr(pr, dry_run: false)
       end
+    end
+  end
+
+  def self.merge_dependabot_pr(pull_request, dry_run: true)
+    if pull_request.is_auto_mergeable?
+      if dry_run
+        puts "    ...eligible for auto-merge! This is a dry run, so skipping."
+      else
+        puts "    ...approving! ✅"
+        pull_request.approve!
+        puts "    ...merging! 🎉"
+        pull_request.merge!
+      end
+    else
+      puts "    ...not auto-mergeable: #{pull_request.reasons_not_to_merge.join(' ')} Skipping."
     end
   end
 
@@ -37,8 +45,6 @@ module AutoMerger
     puts "Analysing #{url}..."
     _, repo_name, pr_number = url.match(/alphagov\/(.+)\/pull\/(.+)$/).to_a
     pr = Repo.new(repo_name).dependabot_pull_request(pr_number)
-
-    puts pr.is_auto_mergeable? ? "PR is considered auto-mergeable." : "PR is not considered auto-mergeable."
-    puts 'Add `require "byebug"; byebug` inside the `is_auto_mergeable?` method to find out more.'
+    merge_dependabot_pr(pr, dry_run: true)
   end
 end
