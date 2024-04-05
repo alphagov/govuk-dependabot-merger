@@ -9,6 +9,15 @@ class DependencyManager
     @change_set = ChangeSet.new
   end
 
+  def determine_allowed_dependencies(remote_config)
+    remote_config["auto_merge"].each do |dependency|
+      allow_dependency_update(
+        name: dependency["dependency"],
+        allowed_semver_bumps: dependency["allowed_semver_bumps"],
+      )
+    end
+  end
+
   def allow_dependency_update(name:, allowed_semver_bumps:)
     allowed_dependency_updates << { name:, allowed_semver_bumps: }
   end

@@ -20,6 +20,37 @@ RSpec.describe DependencyManager do
     end
   end
 
+  describe "#determine_allowed_dependencies" do
+    it "correctly interprets remote config" do
+      remote_config = {
+        "api_version" => 1,
+        "auto_merge" => [
+          {
+            "dependency" => "govuk_publishing_components",
+            "allowed_semver_bumps" => %w[patch minor],
+          },
+          {
+            "dependency" => "rubocop-govuk",
+            "allowed_semver_bumps" => %w[patch],
+          },
+        ],
+      }
+
+      manager = DependencyManager.new
+      manager.determine_allowed_dependencies(remote_config)
+      expect(manager.allowed_dependency_updates).to eq([
+        {
+          name: "govuk_publishing_components",
+          allowed_semver_bumps: %w[patch minor],
+        },
+        {
+          name: "rubocop-govuk",
+          allowed_semver_bumps: %w[patch],
+        },
+      ])
+    end
+  end
+
   describe "#all_proposed_dependencies_on_allowlist?" do
     it "returns false if proposed update hasn't been 'allowed' yet" do
       manager = DependencyManager.new

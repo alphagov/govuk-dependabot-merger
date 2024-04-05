@@ -35,7 +35,7 @@ class PullRequest
     elsif !validate_external_config_file_contents
       reasons_not_to_merge << "The remote .govuk_dependabot_merger.yml file does not have the expected YAML structure."
     else
-      tell_dependency_manager_what_dependencies_are_allowed
+      dependency_manager.determine_allowed_dependencies(@remote_config)
       dependency_manager.change_set = ChangeSet.from_commit_message(commit_message)
 
       if !dependency_manager.all_proposed_dependencies_on_allowlist?
@@ -115,15 +115,6 @@ class PullRequest
 
   def commit_message
     head_commit.commit.message
-  end
-
-  def tell_dependency_manager_what_dependencies_are_allowed
-    @remote_config["auto_merge"].each do |dependency|
-      dependency_manager.allow_dependency_update(
-        name: dependency["dependency"],
-        allowed_semver_bumps: dependency["allowed_semver_bumps"],
-      )
-    end
   end
 
 private
