@@ -155,7 +155,7 @@ RSpec.describe PullRequest do
       allow(mock_dependency_manager).to receive(:all_proposed_dependencies_on_allowlist?).and_return(false)
       expect(mock_dependency_manager).to receive(:all_proposed_dependencies_on_allowlist?)
 
-      pr = create_pull_request_instance(mock_dependency_manager)
+      pr = create_pull_request_instance(dependency_manager: mock_dependency_manager)
       pr.is_auto_mergeable?
       expect(pr.reasons_not_to_merge).to eq([
         "PR bumps a dependency that is not on the allowlist.",
@@ -171,7 +171,7 @@ RSpec.describe PullRequest do
       allow(mock_dependency_manager).to receive(:all_proposed_updates_semver_allowed?).and_return(false)
       expect(mock_dependency_manager).to receive(:all_proposed_updates_semver_allowed?)
 
-      pr = create_pull_request_instance(mock_dependency_manager)
+      pr = create_pull_request_instance(dependency_manager: mock_dependency_manager)
       pr.is_auto_mergeable?
       expect(pr.reasons_not_to_merge).to eq([
         "PR bumps a dependency to a higher semver than is allowed.",
@@ -187,7 +187,7 @@ RSpec.describe PullRequest do
       allow(mock_dependency_manager).to receive(:all_proposed_dependencies_are_internal?).and_return(false)
       expect(mock_dependency_manager).to receive(:all_proposed_dependencies_are_internal?)
 
-      pr = create_pull_request_instance(mock_dependency_manager)
+      pr = create_pull_request_instance(dependency_manager: mock_dependency_manager)
       pr.is_auto_mergeable?
       expect(pr.reasons_not_to_merge).to eq([
         "PR bumps an external dependency.",
@@ -215,8 +215,8 @@ RSpec.describe PullRequest do
       ])
     end
 
-    def create_pull_request_instance(dependency_manager = DependencyManager.new)
-      pr = PullRequest.new(pull_request_api_response, dependency_manager)
+    def create_pull_request_instance(dependency_manager: DependencyManager.new)
+      pr = PullRequest.new(pull_request_api_response, dependency_manager:)
       allow(pr).to receive(:validate_single_commit).and_return(true)
       allow(pr).to receive(:validate_files_changed).and_return(true)
       allow(pr).to receive(:validate_external_config_file_exists).and_return(true)

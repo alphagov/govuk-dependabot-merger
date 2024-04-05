@@ -10,7 +10,7 @@ class PullRequest
 
   attr_reader :dependency_manager, :reasons_not_to_merge
 
-  def initialize(api_response, dependency_manager = DependencyManager.new)
+  def initialize(api_response, dependency_manager: DependencyManager.new)
     @api_response = api_response
     @dependency_manager = dependency_manager
     @reasons_not_to_merge = []
