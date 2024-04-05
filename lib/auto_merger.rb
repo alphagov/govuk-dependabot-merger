@@ -29,24 +29,24 @@ module AutoMerger
         repo.dependabot_pull_requests.each do |pr|
           puts "  - Inspecting #{repo.name}##{pr.number}..."
 
-          merge_dependabot_pr(pr, dry_run: false)
+          merge_dependabot_pr(pr, policy_manager, dry_run: false)
         end
       end
     end
   end
 
-  def self.merge_dependabot_pr(pull_request, dry_run: true)
-    if pull_request.is_auto_mergeable?
-      if dry_run
-        puts "    ...eligible for auto-merge! This is a dry run, so skipping."
-      else
-        puts "    ...approving! ✅"
-        pull_request.approve!
-        puts "    ...merging! 🎉"
-        pull_request.merge!
-      end
+  def self.merge_dependabot_pr(pull_request, policy_manager, dry_run: true)
+    if !policy_manager.is_auto_mergeable?(pull_request)
+      puts "    ...auto-merging is against policy: #{policy_manager.reasons_not_to_merge(pull_request).join(' ')} Skipping."
+    elsif !pull_request.is_auto_mergeable?
+      puts "    ...auto-merging is allowable in theory, but bad PR: #{pull_request.reasons_not_to_merge.join(' ')} Skipping."
+    elsif dry_run
+      puts "    ...eligible for auto-merge! This is a dry run, so skipping."
     else
-      puts "    ...not auto-mergeable: #{pull_request.reasons_not_to_merge.join(' ')} Skipping."
+      puts "    ...approving! ✅"
+      pull_request.approve!
+      puts "    ...merging! 🎉"
+      pull_request.merge!
     end
   end
 
