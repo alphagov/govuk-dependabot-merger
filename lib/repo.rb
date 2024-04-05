@@ -17,6 +17,8 @@ Repo = Struct.new(:name) do
         },
       )
       .then { |content| YAML.safe_load(content) }
+  rescue Psych::SyntaxError
+    { "error" => "syntax" }
   end
 
   def dependabot_pull_requests

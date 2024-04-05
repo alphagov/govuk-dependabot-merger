@@ -38,6 +38,29 @@ RSpec.describe Repo do
         ],
       })
     end
+
+    it "should return an error hash if the YAML is malformed" do
+      config = <<~EXTERNAL_CONFIG_YAML
+        api_version: 1
+        auto_merge:
+          - dependency: govuk_publishing_components
+            allowed_semver_bumps:
+              - patch
+              - minor
+        # note that the below is outdented too far
+        - dependency: rubocop-govuk
+          allowed_semver_bumps:
+            - patch
+            - minor
+      EXTERNAL_CONFIG_YAML
+      stub_request(:get, external_config_file_api_url)
+        .to_return(status: 200, body: config.to_json, headers: { "Content-Type": "application/json" })
+
+      repo = Repo.new(repo_name)
+      expect(repo.govuk_dependabot_merger_config).to eq({
+        "error" => "syntax",
+      })
+    end
   end
 
   describe "#dependabot_pull_requests" do
