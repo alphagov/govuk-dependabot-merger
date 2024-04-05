@@ -3,6 +3,9 @@ require_relative "../../lib/repo"
 RSpec.describe Repo do
   before { set_up_mock_token }
 
+  let(:repo_name) { "foo" }
+  let(:external_config_file_api_url) { "https://api.github.com/repos/alphagov/#{repo_name}/contents/.govuk_dependabot_merger.yml" }
+
   describe ".all" do
     it "should return an array of Repo objects" do
       repos = Repo.all(File.join(File.dirname(__FILE__), "../config/test_repos_opted_in.yml"))
@@ -11,9 +14,68 @@ RSpec.describe Repo do
     end
   end
 
+  describe "#govuk_dependabot_merger_config" do
+    it "should return the Dependabot Merger config for the repo" do
+      config = <<~EXTERNAL_CONFIG_YAML
+        api_version: 1
+        auto_merge:
+          - dependency: govuk_publishing_components
+            allowed_semver_bumps:
+              - patch
+              - minor
+      EXTERNAL_CONFIG_YAML
+      stub_request(:get, external_config_file_api_url)
+        .to_return(status: 200, body: config.to_json, headers: { "Content-Type": "application/json" })
+
+      repo = Repo.new(repo_name)
+      expect(repo.govuk_dependabot_merger_config).to eq({
+        "api_version" => 1,
+        "auto_merge" => [
+          {
+            "allowed_semver_bumps" => %w[patch minor],
+            "dependency" => "govuk_publishing_components",
+          },
+        ],
+      })
+    end
+
+    it "should return an error hash if the YAML is malformed" do
+      config = <<~EXTERNAL_CONFIG_YAML
+        api_version: 1
+        auto_merge:
+          - dependency: govuk_publishing_components
+            allowed_semver_bumps:
+              - patch
+              - minor
+        # note that the below is outdented too far
+        - dependency: rubocop-govuk
+          allowed_semver_bumps:
+            - patch
+            - minor
+      EXTERNAL_CONFIG_YAML
+      stub_request(:get, external_config_file_api_url)
+        .to_return(status: 200, body: config.to_json, headers: { "Content-Type": "application/json" })
+
+      repo = Repo.new(repo_name)
+      expect(repo.govuk_dependabot_merger_config).to eq({
+        "error" => "syntax",
+      })
+    end
+
+    it "should return an error hash if the config file is missing" do
+      stub_request(:get, external_config_file_api_url)
+        .to_return(status: 404)
+
+      repo = Repo.new(repo_name)
+      expect(repo.govuk_dependabot_merger_config).to eq({
+        "error" => "404",
+      })
+    end
+  end
+
   describe "#dependabot_pull_requests" do
     it "should return an array of PullRequest objects" do
-      repo_name = "foo"
+      stub_request(:get, external_config_file_api_url).to_return(status: 200, body: "")
       stub_request(:get, "https://api.github.com/repos/alphagov/#{repo_name}/pulls?sort=created&state=open")
         .to_return(status: 200, body: [pull_request_api_response, pull_request_api_response].to_json, headers: { "Content-Type": "application/json" })
 
@@ -23,7 +85,7 @@ RSpec.describe Repo do
     end
 
     it "should filter out any PRs not raised by Dependabot" do
-      repo_name = "foo"
+      stub_request(:get, external_config_file_api_url).to_return(status: 200, body: "")
       non_dependabot_response = pull_request_api_response({ user: { login: "foo" } })
 
       stub_request(:get, "https://api.github.com/repos/alphagov/#{repo_name}/pulls?sort=created&state=open")

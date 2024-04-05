@@ -10,8 +10,9 @@ class PullRequest
 
   attr_reader :dependency_manager, :reasons_not_to_merge
 
-  def initialize(api_response, dependency_manager = DependencyManager.new)
+  def initialize(api_response, remote_config, dependency_manager: DependencyManager.new)
     @api_response = api_response
+    @remote_config = remote_config
     @dependency_manager = dependency_manager
     @reasons_not_to_merge = []
   end
@@ -78,12 +79,12 @@ class PullRequest
   end
 
   def validate_external_config_file_exists
-    remote_config[:error] != "404"
+    @remote_config["error"] != "404"
   end
 
   def validate_external_config_file_contents
-    remote_config[:error] != "syntax" &&
-      remote_config["api_version"] == DependabotAutoMerge::VERSION
+    @remote_config["error"] != "syntax" &&
+      @remote_config["api_version"] == DependabotAutoMerge::VERSION
   end
 
   def approve!
@@ -116,24 +117,8 @@ class PullRequest
     head_commit.commit.message
   end
 
-  def remote_config
-    @remote_config ||= GitHubClient.instance
-      .contents(
-        "alphagov/#{@api_response.base.repo.name}",
-        {
-          accept: "application/vnd.github.raw",
-          path: ".govuk_dependabot_merger.yml",
-        },
-      )
-      .then { |content| YAML.safe_load content }
-  rescue Octokit::NotFound
-    { "error": "404" }
-  rescue Psych::SyntaxError
-    { "error": "syntax" }
-  end
-
   def tell_dependency_manager_what_dependencies_are_allowed
-    remote_config["auto_merge"].each do |dependency|
+    @remote_config["auto_merge"].each do |dependency|
       dependency_manager.allow_dependency_update(
         name: dependency["dependency"],
         allowed_semver_bumps: dependency["allowed_semver_bumps"],
