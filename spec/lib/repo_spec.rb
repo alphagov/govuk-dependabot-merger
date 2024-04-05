@@ -61,6 +61,16 @@ RSpec.describe Repo do
         "error" => "syntax",
       })
     end
+
+    it "should return an error hash if the config file is missing" do
+      stub_request(:get, external_config_file_api_url)
+        .to_return(status: 404)
+
+      repo = Repo.new(repo_name)
+      expect(repo.govuk_dependabot_merger_config).to eq({
+        "error" => "404",
+      })
+    end
   end
 
   describe "#dependabot_pull_requests" do

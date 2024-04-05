@@ -17,6 +17,8 @@ Repo = Struct.new(:name) do
         },
       )
       .then { |content| YAML.safe_load(content) }
+  rescue Octokit::NotFound
+    { "error" => "404" }
   rescue Psych::SyntaxError
     { "error" => "syntax" }
   end
