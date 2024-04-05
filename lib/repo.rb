@@ -7,6 +7,18 @@ Repo = Struct.new(:name) do
     YAML.safe_load_file(config_file).map { |repo_name| Repo.new(repo_name) }
   end
 
+  def govuk_dependabot_merger_config
+    GitHubClient.instance
+      .contents(
+        "alphagov/#{name}",
+        {
+          accept: "application/vnd.github.raw",
+          path: ".govuk_dependabot_merger.yml",
+        },
+      )
+      .then { |content| YAML.safe_load(content) }
+  end
+
   def dependabot_pull_requests
     @dependabot_pull_requests ||= GitHubClient
       .instance
