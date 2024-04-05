@@ -23,8 +23,8 @@ RSpec.describe PullRequest do
     TEXT
   end
 
-  def create_pull_request_instance(govuk_dependabot_merger_config: remote_config, dependency_manager: DependencyManager.new)
-    pr = PullRequest.new(pull_request_api_response, govuk_dependabot_merger_config, dependency_manager:)
+  def create_pull_request_instance(dependency_manager: DependencyManager.new)
+    pr = PullRequest.new(pull_request_api_response, remote_config, dependency_manager:)
     allow(pr).to receive(:validate_single_commit).and_return(true)
     allow(pr).to receive(:validate_files_changed).and_return(true)
     pr
