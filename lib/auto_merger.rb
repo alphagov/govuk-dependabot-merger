@@ -1,16 +1,16 @@
 require_relative "./bank_holidays"
 require_relative "./repo"
 
-class AutoMerger
+module AutoMerger
   def self.invoke_merge_script!
     if Date.today.is_bank_holiday?
       puts "Today is a bank holiday. Skipping auto-merge."
     else
-      AutoMerger.new.merge_dependabot_prs
+      merge_dependabot_prs
     end
   end
 
-  def merge_dependabot_prs
+  def self.merge_dependabot_prs
     Repo.all.each do |repo|
       if repo.dependabot_pull_requests.count.zero?
         puts "No Dependabot PRs found for repo '#{repo.name}'."
