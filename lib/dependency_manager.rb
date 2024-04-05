@@ -16,9 +16,12 @@ class DependencyManager
     @remote_config["error"] != "404"
   end
 
-  def valid_remote_config?
-    @remote_config["error"] != "syntax" &&
-      @remote_config["api_version"] == DependabotAutoMerge::VERSION
+  def valid_remote_config_syntax?
+    @remote_config["error"] != "syntax"
+  end
+
+  def remote_config_api_version_supported?
+    @remote_config["api_version"] == DependabotAutoMerge::VERSION
   end
 
   def allow_dependency_update(name:, allowed_semver_bumps:)

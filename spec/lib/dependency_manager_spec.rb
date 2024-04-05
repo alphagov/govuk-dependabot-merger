@@ -1,4 +1,5 @@
 require_relative "../../lib/dependency_manager"
+require_relative "../../lib/version"
 
 RSpec.describe DependencyManager do
   describe "#allowed_dependency_updates" do
@@ -62,23 +63,31 @@ RSpec.describe DependencyManager do
     end
   end
 
-  describe "#valid_remote_config?" do
+  describe "#valid_remote_config_syntax?" do
     it "returns false if config has a syntax error" do
       remote_config = { "error" => "syntax" }
 
-      expect(DependencyManager.new(remote_config).valid_remote_config?).to eq(false)
-    end
-
-    it "returns false if config is on a different major version" do
-      remote_config = { "api_version" => -1 }
-
-      expect(DependencyManager.new(remote_config).valid_remote_config?).to eq(false)
+      expect(DependencyManager.new(remote_config).valid_remote_config_syntax?).to eq(false)
     end
 
     it "returns true if config looks valid" do
       remote_config = { "api_version" => 1 }
 
-      expect(DependencyManager.new(remote_config).valid_remote_config?).to eq(true)
+      expect(DependencyManager.new(remote_config).valid_remote_config_syntax?).to eq(true)
+    end
+  end
+
+  describe "#remote_config_api_version_supported?" do
+    it "returns false if config is on a different major version" do
+      remote_config = { "api_version" => -1 }
+
+      expect(DependencyManager.new(remote_config).remote_config_api_version_supported?).to eq(false)
+    end
+
+    it "returns true if config version is supported" do
+      remote_config = { "api_version" => DependabotAutoMerge::VERSION }
+
+      expect(DependencyManager.new(remote_config).remote_config_api_version_supported?).to eq(true)
     end
   end
 

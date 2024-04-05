@@ -30,8 +30,10 @@ class PullRequest
       reasons_not_to_merge << "CI workflow is failing."
     elsif !dependency_manager.remote_config_exists?
       reasons_not_to_merge << "The remote .govuk_dependabot_merger.yml file is missing."
-    elsif !dependency_manager.valid_remote_config?
-      reasons_not_to_merge << "The remote .govuk_dependabot_merger.yml file does not have the expected YAML structure."
+    elsif !dependency_manager.valid_remote_config_syntax?
+      reasons_not_to_merge << "The remote .govuk_dependabot_merger.yml YAML syntax is corrupt."
+    elsif !dependency_manager.remote_config_api_version_supported?
+      reasons_not_to_merge << "The remote .govuk_dependabot_merger.yml file is using an unsupported API version."
     else
       dependency_manager.change_set = ChangeSet.from_commit_message(commit_message)
 
