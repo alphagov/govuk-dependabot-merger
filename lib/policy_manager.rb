@@ -1,12 +1,27 @@
 require_relative "./change_set"
+require_relative "./version"
 
-class DependencyManager
+class PolicyManager
   attr_reader :allowed_dependency_updates
   attr_accessor :change_set
 
-  def initialize
+  def initialize(remote_config = {})
+    @remote_config = remote_config
     @allowed_dependency_updates = []
     @change_set = ChangeSet.new
+    determine_allowed_dependencies
+  end
+
+  def remote_config_exists?
+    @remote_config["error"] != "404"
+  end
+
+  def valid_remote_config_syntax?
+    @remote_config["error"] != "syntax"
+  end
+
+  def remote_config_api_version_supported?
+    @remote_config["api_version"] == DependabotAutoMerge::VERSION
   end
 
   def allow_dependency_update(name:, allowed_semver_bumps:)
@@ -28,5 +43,18 @@ class DependencyManager
 
   def all_proposed_dependencies_are_internal?
     change_set.changes.all? { |change| change.dependency.internal? }
+  end
+
+private
+
+  def determine_allowed_dependencies
+    if @remote_config["auto_merge"]
+      @remote_config["auto_merge"].each do |dependency|
+        allow_dependency_update(
+          name: dependency["dependency"],
+          allowed_semver_bumps: dependency["allowed_semver_bumps"],
+        )
+      end
+    end
   end
 end

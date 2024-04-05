@@ -23,13 +23,6 @@ RSpec.describe PullRequest do
     TEXT
   end
 
-  def create_pull_request_instance(govuk_dependabot_merger_config: remote_config, dependency_manager: DependencyManager.new)
-    pr = PullRequest.new(pull_request_api_response, govuk_dependabot_merger_config, dependency_manager:)
-    allow(pr).to receive(:validate_single_commit).and_return(true)
-    allow(pr).to receive(:validate_files_changed).and_return(true)
-    pr
-  end
-
   let(:repo_name) { "foo" }
   let(:sha) { "ee241dea8da11aff8e575941c138a7f34ddb1a51" }
   let(:pull_request_api_response) do
@@ -95,36 +88,37 @@ RSpec.describe PullRequest do
       ],
     }
   end
-  let(:remote_config) do
-    {
-      "api_version" => 1,
-      "auto_merge" => [
-        {
-          "dependency" => "govuk_publishing_components",
-          "allowed_semver_bumps" => %w[patch minor],
-        },
-        {
-          "dependency" => "rubocop-govuk",
-          "allowed_semver_bumps" => %w[patch minor],
-        },
-      ],
-    }
-  end
 
   describe "#initialize" do
     it "should take a GitHub API response shaped pull request and remote config hash" do
-      PullRequest.new(pull_request_api_response, remote_config)
+      PullRequest.new(pull_request_api_response)
     end
   end
 
   describe "#number" do
     it "should return the number of the PR" do
-      pr = PullRequest.new(pull_request_api_response, remote_config)
+      pr = PullRequest.new(pull_request_api_response)
       expect(pr.number).to eq(1)
     end
   end
 
   describe "#is_auto_mergeable?" do
+    def create_pull_request_instance
+      mock = instance_double("PolicyManager")
+      allow(mock).to receive(:change_set=)
+      allow(mock).to receive(:remote_config_exists?).and_return(true)
+      allow(mock).to receive(:valid_remote_config_syntax?).and_return(true)
+      allow(mock).to receive(:remote_config_api_version_supported?).and_return(true)
+      allow(mock).to receive(:all_proposed_dependencies_on_allowlist?).and_return(true)
+      allow(mock).to receive(:all_proposed_updates_semver_allowed?).and_return(true)
+      allow(mock).to receive(:all_proposed_dependencies_are_internal?).and_return(true)
+
+      pr = PullRequest.new(pull_request_api_response, mock)
+      allow(pr).to receive(:validate_single_commit).and_return(true)
+      allow(pr).to receive(:validate_files_changed).and_return(true)
+      pr
+    end
+
     it "should make a call to validate_single_commit" do
       pr = create_pull_request_instance
       allow(pr).to receive(:validate_single_commit).and_return(false)
@@ -145,67 +139,84 @@ RSpec.describe PullRequest do
       ])
     end
 
-    it "should make a call to validate_external_config_file_exists" do
+    it "should make a call to PolicyManager.remote_config_exists?" do
       stub_successful_check_run
+      stub_remote_commit(head_commit_api_response)
+
       pr = create_pull_request_instance
-      allow(pr).to receive(:validate_external_config_file_exists).and_return(false)
-      expect(pr).to receive(:validate_external_config_file_exists)
+      allow(pr.policy_manager).to receive(:remote_config_exists?).and_return(false)
+      expect(pr.policy_manager).to receive(:remote_config_exists?)
+
       pr.is_auto_mergeable?
       expect(pr.reasons_not_to_merge).to eq([
         "The remote .govuk_dependabot_merger.yml file is missing.",
       ])
     end
 
-    it "should make a call to validate_external_config_file_contents" do
+    it "should make a call to PolicyManager.valid_remote_config_syntax?" do
       stub_successful_check_run
+      stub_remote_commit(head_commit_api_response)
+
       pr = create_pull_request_instance
-      allow(pr).to receive(:validate_external_config_file_contents).and_return(false)
-      expect(pr).to receive(:validate_external_config_file_contents)
+      allow(pr.policy_manager).to receive(:valid_remote_config_syntax?).and_return(false)
+      expect(pr.policy_manager).to receive(:valid_remote_config_syntax?)
+
       pr.is_auto_mergeable?
       expect(pr.reasons_not_to_merge).to eq([
-        "The remote .govuk_dependabot_merger.yml file does not have the expected YAML structure.",
+        "The remote .govuk_dependabot_merger.yml YAML syntax is corrupt.",
       ])
     end
 
-    it "should make a call to DependencyManager.all_proposed_dependencies_on_allowlist?" do
+    it "should make a call to PolicyManager.remote_config_api_version_supported?" do
       stub_successful_check_run
       stub_remote_commit(head_commit_api_response)
-      mock_dependency_manager = create_mock_dependency_manager
 
-      allow(mock_dependency_manager).to receive(:all_proposed_dependencies_on_allowlist?).and_return(false)
-      expect(mock_dependency_manager).to receive(:all_proposed_dependencies_on_allowlist?)
+      pr = create_pull_request_instance
+      allow(pr.policy_manager).to receive(:remote_config_api_version_supported?).and_return(false)
+      expect(pr.policy_manager).to receive(:remote_config_api_version_supported?)
 
-      pr = create_pull_request_instance(dependency_manager: mock_dependency_manager)
+      pr.is_auto_mergeable?
+      expect(pr.reasons_not_to_merge).to eq([
+        "The remote .govuk_dependabot_merger.yml file is using an unsupported API version.",
+      ])
+    end
+
+    it "should make a call to PolicyManager.all_proposed_dependencies_on_allowlist?" do
+      stub_successful_check_run
+      stub_remote_commit(head_commit_api_response)
+
+      pr = create_pull_request_instance
+      allow(pr.policy_manager).to receive(:all_proposed_dependencies_on_allowlist?).and_return(false)
+      expect(pr.policy_manager).to receive(:all_proposed_dependencies_on_allowlist?)
+
       pr.is_auto_mergeable?
       expect(pr.reasons_not_to_merge).to eq([
         "PR bumps a dependency that is not on the allowlist.",
       ])
     end
 
-    it "should make a call to DependencyManager.all_proposed_updates_semver_allowed?" do
+    it "should make a call to PolicyManager.all_proposed_updates_semver_allowed?" do
       stub_successful_check_run
       stub_remote_commit(head_commit_api_response)
-      mock_dependency_manager = create_mock_dependency_manager
 
-      allow(mock_dependency_manager).to receive(:all_proposed_updates_semver_allowed?).and_return(false)
-      expect(mock_dependency_manager).to receive(:all_proposed_updates_semver_allowed?)
+      pr = create_pull_request_instance
+      allow(pr.policy_manager).to receive(:all_proposed_updates_semver_allowed?).and_return(false)
+      expect(pr.policy_manager).to receive(:all_proposed_updates_semver_allowed?)
 
-      pr = create_pull_request_instance(dependency_manager: mock_dependency_manager)
       pr.is_auto_mergeable?
       expect(pr.reasons_not_to_merge).to eq([
         "PR bumps a dependency to a higher semver than is allowed.",
       ])
     end
 
-    it "should make a call to DependencyManager.all_proposed_dependencies_are_internal?" do
+    it "should make a call to PolicyManager.all_proposed_dependencies_are_internal?" do
       stub_successful_check_run
       stub_remote_commit(head_commit_api_response)
-      mock_dependency_manager = create_mock_dependency_manager
 
-      allow(mock_dependency_manager).to receive(:all_proposed_dependencies_are_internal?).and_return(false)
-      expect(mock_dependency_manager).to receive(:all_proposed_dependencies_are_internal?)
+      pr = create_pull_request_instance
+      allow(pr.policy_manager).to receive(:all_proposed_dependencies_are_internal?).and_return(false)
+      expect(pr.policy_manager).to receive(:all_proposed_dependencies_are_internal?)
 
-      pr = create_pull_request_instance(dependency_manager: mock_dependency_manager)
       pr.is_auto_mergeable?
       expect(pr.reasons_not_to_merge).to eq([
         "PR bumps an external dependency.",
@@ -232,15 +243,6 @@ RSpec.describe PullRequest do
         "CI workflow is failing.",
       ])
     end
-
-    def create_mock_dependency_manager
-      mock_dependency_manager = double("DependencyManager", all_proposed_dependencies_on_allowlist?: false)
-      allow(mock_dependency_manager).to receive(:allow_dependency_update)
-      allow(mock_dependency_manager).to receive(:change_set=)
-      allow(mock_dependency_manager).to receive(:all_proposed_dependencies_on_allowlist?).and_return(true)
-      allow(mock_dependency_manager).to receive(:all_proposed_updates_semver_allowed?).and_return(true)
-      mock_dependency_manager
-    end
   end
 
   describe "#validate_single_commit" do
@@ -260,7 +262,7 @@ RSpec.describe PullRequest do
       stub_request(:get, commit_api_url)
         .to_return(status: 200, body: [commit_response])
 
-      pr = PullRequest.new(pull_request_api_response, remote_config)
+      pr = PullRequest.new(pull_request_api_response)
       expect(pr.validate_single_commit).to eq(true)
     end
 
@@ -268,7 +270,7 @@ RSpec.describe PullRequest do
       stub_request(:get, commit_api_url)
         .to_return(status: 200, body: [commit_response, commit_response])
 
-      pr = PullRequest.new(pull_request_api_response, remote_config)
+      pr = PullRequest.new(pull_request_api_response)
       expect(pr.validate_single_commit).to eq(false)
     end
   end
@@ -277,7 +279,7 @@ RSpec.describe PullRequest do
     it "returns true if PR only changes Gemfile.lock" do
       stub_remote_commit(head_commit_api_response)
 
-      pr = PullRequest.new(pull_request_api_response, remote_config)
+      pr = PullRequest.new(pull_request_api_response)
       expect(pr.validate_files_changed).to eq(true)
     end
 
@@ -285,7 +287,7 @@ RSpec.describe PullRequest do
       head_commit_api_response[:files][0][:filename] = "something_else.rb"
       stub_remote_commit(head_commit_api_response)
 
-      pr = PullRequest.new(pull_request_api_response, remote_config)
+      pr = PullRequest.new(pull_request_api_response)
       expect(pr.validate_files_changed).to eq(false)
     end
   end
@@ -298,7 +300,7 @@ RSpec.describe PullRequest do
         ],
       })
 
-      pr = PullRequest.new(pull_request_api_response, remote_config)
+      pr = PullRequest.new(pull_request_api_response)
       expect(pr.validate_ci_workflow_exists).to eq(true)
     end
 
@@ -309,14 +311,14 @@ RSpec.describe PullRequest do
         ],
       })
 
-      pr = PullRequest.new(pull_request_api_response, remote_config)
+      pr = PullRequest.new(pull_request_api_response)
       expect(pr.validate_ci_workflow_exists).to eq(false)
     end
 
     it "should raise an exception if no workflows are returned in the response" do
       stub_ci_endpoint({ "error": "some GitHub error" })
 
-      pr = PullRequest.new(pull_request_api_response, remote_config)
+      pr = PullRequest.new(pull_request_api_response)
       expected_output = <<~MULTILINE_OUTPUT
         Error fetching CI workflow in API response for https://api.github.com/repos/alphagov/foo/actions/runs?head_sha=#{sha}
         {"error":"some GitHub error"}
@@ -347,7 +349,7 @@ RSpec.describe PullRequest do
         ],
       })
 
-      pr = PullRequest.new(pull_request_api_response, remote_config)
+      pr = PullRequest.new(pull_request_api_response)
       expect(pr.validate_ci_passes).to eq(true)
     end
 
@@ -358,7 +360,7 @@ RSpec.describe PullRequest do
         ],
       })
 
-      pr = PullRequest.new(pull_request_api_response, remote_config)
+      pr = PullRequest.new(pull_request_api_response)
       expect(pr.validate_ci_passes).to eq(false)
     end
 
@@ -369,34 +371,8 @@ RSpec.describe PullRequest do
         ],
       })
 
-      pr = PullRequest.new(pull_request_api_response, remote_config)
+      pr = PullRequest.new(pull_request_api_response)
       expect(pr.validate_ci_passes).to eq(false)
-    end
-  end
-
-  describe "#validate_external_config_file_exists" do
-    it "returns false if there is no automerge config file in the repo" do
-      pr = PullRequest.new(pull_request_api_response, { "error" => "404" })
-      expect(pr.validate_external_config_file_exists).to eq(false)
-    end
-
-    it "returns true if the automerge config file exists" do
-      pr = create_pull_request_instance
-      expect(pr.validate_external_config_file_exists).to eq(true)
-    end
-  end
-
-  describe "#validate_external_config_file_contents" do
-    it "returns false if the automerge config file is on a different version" do
-      remote_config = { "api_version" => -1 }
-
-      pr = PullRequest.new(pull_request_api_response, remote_config)
-      expect(pr.validate_external_config_file_contents).to eq(false)
-    end
-
-    it "returns true if the automerge config file contains nothing unexpected" do
-      pr = create_pull_request_instance
-      expect(pr.validate_external_config_file_contents).to eq(true)
     end
   end
 
@@ -404,7 +380,7 @@ RSpec.describe PullRequest do
     let(:approval_api_url) { "https://api.github.com/repos/alphagov/#{repo_name}/pulls/1/reviews" }
 
     it "should make an API call to approve the PR" do
-      pr = PullRequest.new(pull_request_api_response, remote_config)
+      pr = PullRequest.new(pull_request_api_response)
       stub_request(:post, approval_api_url).with(
         body: {
           "event": "APPROVE",
@@ -417,7 +393,7 @@ RSpec.describe PullRequest do
     end
 
     it "should raise an exception if request unauthorised" do
-      pr = PullRequest.new(pull_request_api_response, remote_config)
+      pr = PullRequest.new(pull_request_api_response)
       stub_request(:post, approval_api_url).to_return(status: 403)
 
       expect { pr.approve! }.to raise_exception(PullRequest::CannotApproveException)
@@ -426,7 +402,7 @@ RSpec.describe PullRequest do
 
   describe "#merge!" do
     it "should make an API call to merge the PR" do
-      pr = PullRequest.new(pull_request_api_response, remote_config)
+      pr = PullRequest.new(pull_request_api_response)
       stub_request(:put, "https://api.github.com/repos/alphagov/#{repo_name}/pulls/1/merge").to_return(status: 200)
 
       pr.merge!

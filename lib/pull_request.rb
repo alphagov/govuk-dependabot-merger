@@ -1,19 +1,17 @@
 require "yaml"
 require_relative "./change_set"
-require_relative "./dependency_manager"
 require_relative "./github_client"
-require_relative "./version"
+require_relative "./policy_manager"
 
 class PullRequest
   class CannotApproveException < StandardError; end
   class UnexpectedGitHubApiResponse < StandardError; end
 
-  attr_reader :dependency_manager, :reasons_not_to_merge
+  attr_reader :policy_manager, :reasons_not_to_merge
 
-  def initialize(api_response, remote_config, dependency_manager: DependencyManager.new)
+  def initialize(api_response, policy_manager = PolicyManager.new)
     @api_response = api_response
-    @remote_config = remote_config
-    @dependency_manager = dependency_manager
+    @policy_manager = policy_manager
     @reasons_not_to_merge = []
   end
 
@@ -30,19 +28,20 @@ class PullRequest
       reasons_not_to_merge << "CI workflow doesn't exist."
     elsif !validate_ci_passes
       reasons_not_to_merge << "CI workflow is failing."
-    elsif !validate_external_config_file_exists
+    elsif !policy_manager.remote_config_exists?
       reasons_not_to_merge << "The remote .govuk_dependabot_merger.yml file is missing."
-    elsif !validate_external_config_file_contents
-      reasons_not_to_merge << "The remote .govuk_dependabot_merger.yml file does not have the expected YAML structure."
+    elsif !policy_manager.valid_remote_config_syntax?
+      reasons_not_to_merge << "The remote .govuk_dependabot_merger.yml YAML syntax is corrupt."
+    elsif !policy_manager.remote_config_api_version_supported?
+      reasons_not_to_merge << "The remote .govuk_dependabot_merger.yml file is using an unsupported API version."
     else
-      tell_dependency_manager_what_dependencies_are_allowed
-      dependency_manager.change_set = ChangeSet.from_commit_message(commit_message)
+      policy_manager.change_set = ChangeSet.from_commit_message(commit_message)
 
-      if !dependency_manager.all_proposed_dependencies_on_allowlist?
+      if !policy_manager.all_proposed_dependencies_on_allowlist?
         reasons_not_to_merge << "PR bumps a dependency that is not on the allowlist."
-      elsif !dependency_manager.all_proposed_updates_semver_allowed?
+      elsif !policy_manager.all_proposed_updates_semver_allowed?
         reasons_not_to_merge << "PR bumps a dependency to a higher semver than is allowed."
-      elsif !dependency_manager.all_proposed_dependencies_are_internal?
+      elsif !policy_manager.all_proposed_dependencies_are_internal?
         reasons_not_to_merge << "PR bumps an external dependency."
       end
     end
@@ -78,15 +77,6 @@ class PullRequest
     unfinished_jobs.empty? && failed_jobs.empty?
   end
 
-  def validate_external_config_file_exists
-    @remote_config["error"] != "404"
-  end
-
-  def validate_external_config_file_contents
-    @remote_config["error"] != "syntax" &&
-      @remote_config["api_version"] == DependabotAutoMerge::VERSION
-  end
-
   def approve!
     approval_message = <<~REVIEW_COMMENT
       This PR has been scanned and automatically approved by [govuk-dependabot-merger](https://github.com/alphagov/govuk-dependabot-merger).
@@ -115,15 +105,6 @@ class PullRequest
 
   def commit_message
     head_commit.commit.message
-  end
-
-  def tell_dependency_manager_what_dependencies_are_allowed
-    @remote_config["auto_merge"].each do |dependency|
-      dependency_manager.allow_dependency_update(
-        name: dependency["dependency"],
-        allowed_semver_bumps: dependency["allowed_semver_bumps"],
-      )
-    end
   end
 
 private
