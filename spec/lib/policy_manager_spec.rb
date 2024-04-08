@@ -27,6 +27,160 @@ RSpec.describe PolicyManager do
     end
   end
 
+  describe "#dependency_policy" do
+    RSpec.shared_examples "doesn't allow auto-merging internal dependencies" do
+      let(:expected_policy) { { auto_merge: false, allowed_semver_bumps: [] } }
+      it { expect(policy_manager.dependency_policy(internal_dependency)).to eq(expected_policy) }
+    end
+    RSpec.shared_examples "doesn't allow auto-merging external dependencies" do
+      let(:expected_policy) { { auto_merge: false, allowed_semver_bumps: [] } }
+      it { expect(policy_manager.dependency_policy(external_dependency)).to eq(expected_policy) }
+    end
+    RSpec.shared_examples "allows auto-merging internal dependencies" do
+      let(:expected_policy) { { auto_merge: true, allowed_semver_bumps: } }
+      it { expect(policy_manager.dependency_policy(internal_dependency)).to eq(expected_policy) }
+    end
+    RSpec.shared_examples "allows auto-merging external dependencies" do
+      let(:expected_policy) { { auto_merge: true, allowed_semver_bumps: } }
+      it { expect(policy_manager.dependency_policy(external_dependency)).to eq(expected_policy) }
+    end
+    let(:policy_manager) { PolicyManager.new(remote_config) }
+    let(:remote_config) do
+      {
+        "defaults" => {
+          "update_external_dependencies" => update_external_dependencies,
+          "auto_merge" => auto_merge,
+          "allowed_semver_bumps" => allowed_semver_bumps,
+        },
+      }
+    end
+    let(:allowed_semver_bumps) { %i[patch minor] }
+    let(:internal_dependency) { stub_internal_dependency("govuk_publishing_components") }
+    let(:external_dependency) { stub_external_dependency("foo") }
+
+    context "auto merge disabled, external dependencies disabled" do
+      let(:auto_merge) { false }
+      let(:update_external_dependencies) { false }
+
+      it_behaves_like "doesn't allow auto-merging internal dependencies"
+      it_behaves_like "doesn't allow auto-merging external dependencies"
+    end
+
+    context "auto merge disabled, external dependencies enabled" do
+      let(:auto_merge) { false }
+      let(:update_external_dependencies) { true }
+
+      it_behaves_like "doesn't allow auto-merging internal dependencies"
+      it_behaves_like "doesn't allow auto-merging external dependencies"
+    end
+
+    context "auto merge enabled, external dependencies disabled" do
+      let(:auto_merge) { true }
+      let(:update_external_dependencies) { false }
+
+      it_behaves_like "allows auto-merging internal dependencies"
+      it_behaves_like "doesn't allow auto-merging external dependencies"
+    end
+
+    context "auto merge enabled, external dependencies enabled" do
+      let(:auto_merge) { true }
+      let(:update_external_dependencies) { true }
+
+      it_behaves_like "allows auto-merging internal dependencies"
+      it_behaves_like "allows auto-merging external dependencies"
+    end
+
+    context "general tests for overrides" do
+      # these `let`s are included so `remote_config` doesn't raise an exception, but each
+      # individual test should override the relevant bits of `remote_config["defaults"]`
+      # for explicitness.
+      let(:auto_merge) { true }
+      let(:update_external_dependencies) { true }
+
+      it "refers to overridden 'allowed_semver_bumps' value for dependencies if provided" do
+        remote_config["defaults"]["allowed_semver_bumps"] = %i[patch]
+        remote_config["overrides"] = [{ "dependency" => internal_dependency, "allowed_semver_bumps" => %i[major] }]
+        expect(policy_manager.dependency_policy(internal_dependency)).to eq({
+          auto_merge: true,
+          allowed_semver_bumps: %i[major],
+        })
+      end
+
+      it "doesn't allow auto-merging internal dependencies if they override `auto_merge` to false" do
+        remote_config["defaults"]["auto_merge"] = true
+        remote_config["overrides"] = [{ "dependency" => internal_dependency, "auto_merge" => false }]
+
+        expect(policy_manager.dependency_policy(internal_dependency)).to eq({
+          auto_merge: false,
+          allowed_semver_bumps: [],
+        })
+      end
+
+      it "doesn't return overridden 'allowed_semver_bumps' value if dependency isn't eligible for auto-merge" do
+        remote_config["defaults"]["allowed_semver_bumps"] = %i[patch]
+        remote_config["overrides"] = [{ "dependency" => internal_dependency, "auto_merge" => false, "allowed_semver_bumps" => %i[major] }]
+        expect(policy_manager.dependency_policy(internal_dependency)).to eq({
+          auto_merge: false,
+          allowed_semver_bumps: [],
+        })
+      end
+
+      it "doesn't allow auto-merging external dependencies if they override `update_external_dependencies` to false" do
+        remote_config["defaults"]["auto_merge"] = true
+        remote_config["defaults"]["update_external_dependencies"] = true
+        remote_config["overrides"] = [{ "dependency" => external_dependency, "update_external_dependencies" => false }]
+
+        expect(policy_manager.dependency_policy(external_dependency)).to eq({
+          auto_merge: false,
+          allowed_semver_bumps: [],
+        })
+      end
+
+      it "allows allow-listed external dependencies to be auto-merged" do
+        remote_config["defaults"]["auto_merge"] = false
+        remote_config["defaults"]["update_external_dependencies"] = true
+        remote_config["overrides"] = [{ "dependency" => external_dependency, "auto_merge" => true }]
+
+        expect(policy_manager.dependency_policy(external_dependency)).to eq({
+          auto_merge: true,
+          allowed_semver_bumps:,
+        })
+      end
+
+      it "allows overridden internal dependencies to be auto-merged" do
+        remote_config["defaults"]["auto_merge"] = false
+        remote_config["overrides"] = [{ "dependency" => internal_dependency, "auto_merge" => true }]
+
+        expect(policy_manager.dependency_policy(internal_dependency)).to eq({
+          auto_merge: true,
+          allowed_semver_bumps:,
+        })
+      end
+
+      it "doesn't allow overridden external dependencies to be auto-merged (due to `update_external_dependencies`)" do
+        remote_config["defaults"]["auto_merge"] = false
+        remote_config["defaults"]["update_external_dependencies"] = false
+        remote_config["overrides"] = [{ "dependency" => external_dependency, "auto_merge" => true }]
+
+        expect(policy_manager.dependency_policy(external_dependency)).to eq({
+          auto_merge: false,
+          allowed_semver_bumps: [],
+        })
+      end
+
+      it "allows overridden external dependencies to be auto-merged if `update_external_dependencies` is overridden to `true`" do
+        remote_config["defaults"]["auto_merge"] = false
+        remote_config["defaults"]["update_external_dependencies"] = false
+        remote_config["overrides"] = [{ "dependency" => external_dependency, "auto_merge" => true, "update_external_dependencies" => true }]
+
+        expect(policy_manager.dependency_policy(external_dependency)).to eq({
+          auto_merge: true,
+          allowed_semver_bumps:,
+        })
+      end
+    end
+  end
+
   describe "#allowed_dependency_updates" do
     it "returns array of dependencies and semvers that are 'allowed' to be auto-merged" do
       manager = PolicyManager.new
@@ -118,10 +272,7 @@ RSpec.describe PolicyManager do
 
   describe "#is_auto_mergeable? and #reasons_not_to_merge" do
     before do
-      stub_request(:get, "https://rubygems.org/api/v1/gems/govuk_publishing_components/owners.yaml").to_return(
-        status: 200,
-        body: "- handle: govuk",
-      )
+      stub_internal_dependency("govuk_publishing_components")
     end
     let(:remote_config) do
       {
@@ -259,5 +410,21 @@ RSpec.describe PolicyManager do
       manager.change_set.changes << Change.new(dependency, :major)
       expect(manager.all_proposed_dependencies_are_internal?).to eq(true)
     end
+  end
+
+  def stub_internal_dependency(dependency_name)
+    stub_request(:get, "https://rubygems.org/api/v1/gems/#{dependency_name}/owners.yaml").to_return(
+      status: 200,
+      body: "- handle: govuk",
+    )
+    dependency_name
+  end
+
+  def stub_external_dependency(dependency_name)
+    stub_request(:get, "https://rubygems.org/api/v1/gems/#{dependency_name}/owners.yaml").to_return(
+      status: 200,
+      body: "- handle: someone_else",
+    )
+    dependency_name
   end
 end

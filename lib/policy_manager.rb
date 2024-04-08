@@ -21,6 +21,22 @@ class PolicyManager
     }
   end
 
+  def dependency_policy(dependency_name)
+    dependency_overrides = @remote_config["overrides"]&.find { |dependency| dependency["dependency"] == dependency_name } || {}
+
+    update_external_dependencies = dependency_overrides["update_external_dependencies"].nil? ? defaults[:update_external_dependencies] : dependency_overrides["update_external_dependencies"]
+    allowed_semver_bumps = dependency_overrides["allowed_semver_bumps"].nil? ? defaults[:allowed_semver_bumps] : dependency_overrides["allowed_semver_bumps"]
+    auto_merge = dependency_overrides["auto_merge"].nil? ? defaults[:auto_merge] : dependency_overrides["auto_merge"]
+
+    dependency = Dependency.new(dependency_name)
+    auto_merge = update_external_dependencies if auto_merge && !dependency.internal?
+
+    {
+      auto_merge:,
+      allowed_semver_bumps: auto_merge ? allowed_semver_bumps : [],
+    }
+  end
+
   def remote_config_exists?
     @remote_config["error"] != "404"
   end
