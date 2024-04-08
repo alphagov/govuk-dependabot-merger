@@ -24,6 +24,27 @@ class PolicyManager
     @remote_config["api_version"] == DependabotAutoMerge::VERSION
   end
 
+  def is_auto_mergeable?(pull_request)
+    reasons_not_to_merge(pull_request).count.zero?
+  end
+
+  def reasons_not_to_merge(pull_request)
+    @change_set = ChangeSet.from_commit_message(pull_request.commit_message)
+
+    reasons_not_to_merge = []
+    unless all_proposed_dependencies_on_allowlist?
+      reasons_not_to_merge << "PR bumps a dependency that is not on the allowlist."
+    end
+    unless all_proposed_updates_semver_allowed?
+      reasons_not_to_merge << "PR bumps a dependency to a higher semver than is allowed."
+    end
+    unless all_proposed_dependencies_are_internal?
+      reasons_not_to_merge << "PR bumps an external dependency."
+    end
+
+    reasons_not_to_merge
+  end
+
   def allow_dependency_update(name:, allowed_semver_bumps:)
     allowed_dependency_updates << { name:, allowed_semver_bumps: }
   end

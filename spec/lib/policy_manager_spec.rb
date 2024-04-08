@@ -91,6 +91,66 @@ RSpec.describe PolicyManager do
     end
   end
 
+  describe "#is_auto_mergeable? and #reasons_not_to_merge" do
+    before do
+      stub_request(:get, "https://rubygems.org/api/v1/gems/govuk_publishing_components/owners.yaml").to_return(
+        status: 200,
+        body: "- handle: govuk",
+      )
+    end
+    let(:remote_config) do
+      {
+        "api_version" => DependabotAutoMerge::VERSION,
+        "auto_merge" => [
+          {
+            "dependency" => "govuk_publishing_components",
+            "allowed_semver_bumps" => %w[patch minor],
+          },
+        ],
+      }
+    end
+    let(:mock_pr) do
+      mock_pr = instance_double("PullRequest")
+      allow(mock_pr).to receive(:commit_message).and_return(
+        <<~COMMIT_MESSAGE,
+          ---
+          updated-dependencies:
+          - dependency-name: govuk_publishing_components
+            dependency-type: direct:production
+            update-type: version-update:semver-minor
+        COMMIT_MESSAGE
+      )
+      mock_pr
+    end
+
+    it "should make a call to all_proposed_dependencies_on_allowlist? and return false if false" do
+      policy_manager = PolicyManager.new(remote_config)
+      expect(policy_manager).to receive(:all_proposed_dependencies_on_allowlist?).and_return(false).at_least(:once)
+      expect(policy_manager.is_auto_mergeable?(mock_pr)).to eq(false)
+      expect(policy_manager.reasons_not_to_merge(mock_pr)).to eq([
+        "PR bumps a dependency that is not on the allowlist.",
+      ])
+    end
+
+    it "should make a call to all_proposed_updates_semver_allowed? and return false if false" do
+      policy_manager = PolicyManager.new(remote_config)
+      expect(policy_manager).to receive(:all_proposed_updates_semver_allowed?).and_return(false).at_least(:once)
+      expect(policy_manager.is_auto_mergeable?(mock_pr)).to eq(false)
+      expect(policy_manager.reasons_not_to_merge(mock_pr)).to eq([
+        "PR bumps a dependency to a higher semver than is allowed.",
+      ])
+    end
+
+    it "should make a call to all_proposed_dependencies_are_internal? and return false if false" do
+      policy_manager = PolicyManager.new(remote_config)
+      expect(policy_manager).to receive(:all_proposed_dependencies_are_internal?).and_return(false).at_least(:once)
+      expect(policy_manager.is_auto_mergeable?(mock_pr)).to eq(false)
+      expect(policy_manager.reasons_not_to_merge(mock_pr)).to eq([
+        "PR bumps an external dependency.",
+      ])
+    end
+  end
+
   describe "#all_proposed_dependencies_on_allowlist?" do
     it "returns false if proposed update hasn't been 'allowed' yet" do
       manager = PolicyManager.new
