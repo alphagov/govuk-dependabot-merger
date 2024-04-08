@@ -12,6 +12,15 @@ class PolicyManager
     determine_allowed_dependencies
   end
 
+  def defaults
+    defaults = @remote_config["defaults"] || {}
+    {
+      update_external_dependencies: defaults["update_external_dependencies"].nil? ? false : defaults["update_external_dependencies"],
+      auto_merge: defaults["auto_merge"].nil? ? true : defaults["auto_merge"],
+      allowed_semver_bumps: defaults["allowed_semver_bumps"].nil? ? %i[patch minor] : defaults["allowed_semver_bumps"],
+    }
+  end
+
   def remote_config_exists?
     @remote_config["error"] != "404"
   end
