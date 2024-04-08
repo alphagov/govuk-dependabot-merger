@@ -2,6 +2,31 @@ require_relative "../../lib/policy_manager"
 require_relative "../../lib/version"
 
 RSpec.describe PolicyManager do
+  describe "#defaults" do
+    it "returns set of default behaviours" do
+      expect(PolicyManager.new.defaults).to eq({
+        update_external_dependencies: false,
+        auto_merge: true,
+        allowed_semver_bumps: %i[patch minor],
+      })
+    end
+
+    it "can override the default `update_external_dependencies` property via remote config" do
+      remote_config = { "defaults" => { "update_external_dependencies" => true } }
+      expect(PolicyManager.new(remote_config).defaults[:update_external_dependencies]).to eq(true)
+    end
+
+    it "can override the default `auto_merge` property via remote config" do
+      remote_config = { "defaults" => { "auto_merge" => false } }
+      expect(PolicyManager.new(remote_config).defaults[:auto_merge]).to eq(false)
+    end
+
+    it "can override the default `allowed_semver_bumps` property via remote config" do
+      remote_config = { "defaults" => { "allowed_semver_bumps" => %i[major] } }
+      expect(PolicyManager.new(remote_config).defaults[:allowed_semver_bumps]).to eq(%i[major])
+    end
+  end
+
   describe "#allowed_dependency_updates" do
     it "returns array of dependencies and semvers that are 'allowed' to be auto-merged" do
       manager = PolicyManager.new
