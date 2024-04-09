@@ -13,6 +13,22 @@ RSpec.describe AutoMerger do
       expect(AutoMerger).not_to receive(:merge_dependabot_prs)
       expect { AutoMerger.invoke_merge_script! }.to output("Today is a bank holiday. Skipping auto-merge.\n").to_stdout
     end
+
+    it "should call `merge_dependabot_prs` with `dry_run: false` if not a bank holiday" do
+      allow(Date).to receive(:bank_holidays).and_return([])
+
+      expect(AutoMerger).to receive(:merge_dependabot_prs).with(dry_run: false)
+      AutoMerger.invoke_merge_script!
+    end
+  end
+
+  describe ".pretend_invoke_merge_script!" do
+    it "should call `merge_dependabot_prs` with `dry_run: true`" do
+      allow(Date).to receive(:bank_holidays).and_return([])
+
+      expect(AutoMerger).to receive(:merge_dependabot_prs).with(dry_run: true)
+      AutoMerger.pretend_invoke_merge_script!
+    end
   end
 
   describe ".merge_dependabot_prs" do
@@ -32,6 +48,16 @@ RSpec.describe AutoMerger do
       expect(AutoMerger).to receive(:merge_dependabot_pr).with(mock_pr_3, dry_run: false)
 
       AutoMerger.merge_dependabot_prs
+    end
+
+    it "forwards the `dry_run` keyword arg if passed" do
+      mock_pr = instance_double("PullRequest", number: 1)
+      mock_repo = instance_double("Repo", name: "Repo", govuk_dependabot_merger_config: {}, dependabot_pull_requests: [mock_pr])
+      allow(Repo).to receive(:all).and_return([mock_repo])
+
+      expect(AutoMerger).to receive(:merge_dependabot_pr).with(mock_pr, dry_run: true)
+
+      AutoMerger.merge_dependabot_prs(dry_run: true)
     end
   end
 

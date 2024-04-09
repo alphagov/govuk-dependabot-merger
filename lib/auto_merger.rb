@@ -6,11 +6,20 @@ module AutoMerger
     if Date.today.is_bank_holiday?
       puts "Today is a bank holiday. Skipping auto-merge."
     else
-      merge_dependabot_prs
+      merge_dependabot_prs(dry_run: false)
     end
   end
 
-  def self.merge_dependabot_prs
+  def self.pretend_invoke_merge_script!
+    puts "🍸 Doing a dry run of the auto merge script 🏃"
+    if Date.today.is_bank_holiday?
+      puts "Today is a bank holiday. Skipping auto-merge."
+    else
+      merge_dependabot_prs(dry_run: true)
+    end
+  end
+
+  def self.merge_dependabot_prs(dry_run: false)
     Repo.all.each do |repo|
       if repo.dependabot_pull_requests.count.zero?
         puts "No Dependabot PRs found for repo '#{repo.name}'."
@@ -21,7 +30,7 @@ module AutoMerger
       repo.dependabot_pull_requests.each do |pr|
         puts "  - Inspecting #{repo.name}##{pr.number}..."
 
-        merge_dependabot_pr(pr, dry_run: false)
+        merge_dependabot_pr(pr, dry_run:)
       end
     end
   end
