@@ -2,14 +2,8 @@ require_relative "./change_set"
 require_relative "./version"
 
 class PolicyManager
-  attr_reader :allowed_dependency_updates
-  attr_accessor :change_set
-
   def initialize(remote_config = {})
     @remote_config = remote_config
-    @allowed_dependency_updates = []
-    @change_set = ChangeSet.new
-    determine_allowed_dependencies
   end
 
   def defaults
@@ -54,17 +48,13 @@ class PolicyManager
   end
 
   def reasons_not_to_merge(pull_request)
-    @change_set = ChangeSet.from_commit_message(pull_request.commit_message)
+    changes = ChangeSet.from_commit_message(pull_request.commit_message).changes
 
     reasons_not_to_merge = []
-    unless all_proposed_dependencies_on_allowlist?
-      reasons_not_to_merge << "PR bumps a dependency that is not on the allowlist."
-    end
-    unless all_proposed_updates_semver_allowed?
-      reasons_not_to_merge << "PR bumps a dependency to a higher semver than is allowed."
-    end
-    unless all_proposed_dependencies_are_internal?
-      reasons_not_to_merge << "PR bumps an external dependency."
+    changes.each do |change|
+      unless change_allowed?(change.dependency.name, change.type)
+        reasons_not_to_merge << "#{change.dependency.name} #{change.type} increase is not allowed by the derived policy for this dependency: #{dependency_policy(change.dependency.name)}"
+      end
     end
 
     reasons_not_to_merge
@@ -73,39 +63,5 @@ class PolicyManager
   def change_allowed?(dependency_name, change_type)
     policy = dependency_policy(dependency_name)
     policy[:auto_merge] && policy[:allowed_semver_bumps].include?(change_type)
-  end
-
-  def allow_dependency_update(name:, allowed_semver_bumps:)
-    allowed_dependency_updates << { name:, allowed_semver_bumps: }
-  end
-
-  def all_proposed_dependencies_on_allowlist?
-    change_set.changes.all? do |change|
-      allowed_dependency_updates.map { |dep| dep[:name] }.include? change.dependency.name
-    end
-  end
-
-  def all_proposed_updates_semver_allowed?
-    change_set.changes.all? do |change|
-      dependency = allowed_dependency_updates.find { |dep| dep[:name] == change.dependency.name }
-      dependency.nil? || dependency[:allowed_semver_bumps].include?(change.type.to_s)
-    end
-  end
-
-  def all_proposed_dependencies_are_internal?
-    change_set.changes.all? { |change| change.dependency.internal? }
-  end
-
-private
-
-  def determine_allowed_dependencies
-    if @remote_config["auto_merge"]
-      @remote_config["auto_merge"].each do |dependency|
-        allow_dependency_update(
-          name: dependency["dependency"],
-          allowed_semver_bumps: dependency["allowed_semver_bumps"],
-        )
-      end
-    end
   end
 end

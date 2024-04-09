@@ -181,50 +181,23 @@ RSpec.describe PolicyManager do
     end
   end
 
-  describe "#allowed_dependency_updates" do
-    it "returns array of dependencies and semvers that are 'allowed' to be auto-merged" do
-      manager = PolicyManager.new
-      manager.allow_dependency_update(name: "foo", allowed_semver_bumps: %w[patch minor])
-      manager.allow_dependency_update(name: "bar", allowed_semver_bumps: %w[patch])
-
-      expect(manager.allowed_dependency_updates).to eq([
-        {
-          name: "foo",
-          allowed_semver_bumps: %w[patch minor],
-        },
-        {
-          name: "bar",
-          allowed_semver_bumps: %w[patch],
-        },
-      ])
+  describe "#change_allowed?" do
+    it "returns false if `auto_merge` is false" do
+      policy_manager = PolicyManager.new
+      allow(policy_manager).to receive(:dependency_policy).and_return(auto_merge: false)
+      expect(policy_manager.change_allowed?("foo", :patch)).to eq(false)
     end
 
-    it "works with remote config passed on initialisation" do
-      remote_config = {
-        "api_version" => 1,
-        "auto_merge" => [
-          {
-            "dependency" => "govuk_publishing_components",
-            "allowed_semver_bumps" => %w[patch minor],
-          },
-          {
-            "dependency" => "rubocop-govuk",
-            "allowed_semver_bumps" => %w[patch],
-          },
-        ],
-      }
+    it "returns false if the requested semver isn't allowed" do
+      policy_manager = PolicyManager.new
+      allow(policy_manager).to receive(:dependency_policy).and_return(auto_merge: true, allowed_semver_bumps: %i[patch])
+      expect(policy_manager.change_allowed?("foo", :minor)).to eq(false)
+    end
 
-      manager = PolicyManager.new(remote_config)
-      expect(manager.allowed_dependency_updates).to eq([
-        {
-          name: "govuk_publishing_components",
-          allowed_semver_bumps: %w[patch minor],
-        },
-        {
-          name: "rubocop-govuk",
-          allowed_semver_bumps: %w[patch],
-        },
-      ])
+    it "returns true if both `auto_merge: true` and requested semver is allowed" do
+      policy_manager = PolicyManager.new
+      allow(policy_manager).to receive(:dependency_policy).and_return(auto_merge: true, allowed_semver_bumps: %i[patch])
+      expect(policy_manager.change_allowed?("foo", :patch)).to eq(true)
     end
   end
 
@@ -291,144 +264,81 @@ RSpec.describe PolicyManager do
   end
 
   describe "#is_auto_mergeable? and #reasons_not_to_merge" do
-    before do
-      stub_internal_dependency("govuk_publishing_components")
-    end
+    let(:internal_dependency) { stub_internal_dependency("govuk_publishing_components") }
+    let(:external_dependency) { stub_external_dependency("foo") }
     let(:remote_config) do
       {
         "api_version" => DependabotAutoMerge::VERSION,
-        "auto_merge" => [
+        "defaults" => {
+          "auto_merge" => true,
+          "update_external_dependencies" => true,
+          "allowed_semver_bumps" => %i[patch minor],
+        },
+        "overrides" => [
           {
-            "dependency" => "govuk_publishing_components",
-            "allowed_semver_bumps" => %w[patch minor],
+            # example of being stricter about semver for certain dependencies
+            "dependency" => internal_dependency,
+            "allowed_semver_bumps" => %i[patch],
+          },
+          {
+            # example of deny-listing a named external dependency
+            "dependency" => external_dependency,
+            "update_external_dependencies" => false,
           },
         ],
       }
     end
-    let(:mock_pr) do
+
+    it "should return reasons not to merge the example internal dependency" do
       mock_pr = instance_double("PullRequest")
       allow(mock_pr).to receive(:commit_message).and_return(
         <<~COMMIT_MESSAGE,
           ---
           updated-dependencies:
-          - dependency-name: govuk_publishing_components
+          - dependency-name: #{internal_dependency}
             dependency-type: direct:production
             update-type: version-update:semver-minor
         COMMIT_MESSAGE
       )
-      mock_pr
-    end
 
-    it "should make a call to all_proposed_dependencies_on_allowlist? and return false if false" do
-      policy_manager = PolicyManager.new(remote_config)
-      expect(policy_manager).to receive(:all_proposed_dependencies_on_allowlist?).and_return(false).at_least(:once)
-      expect(policy_manager.is_auto_mergeable?(mock_pr)).to eq(false)
-      expect(policy_manager.reasons_not_to_merge(mock_pr)).to eq([
-        "PR bumps a dependency that is not on the allowlist.",
+      expect(PolicyManager.new(remote_config).is_auto_mergeable?(mock_pr)).to eq(false)
+      expect(PolicyManager.new(remote_config).reasons_not_to_merge(mock_pr)).to eq([
+        "govuk_publishing_components minor increase is not allowed by the derived policy for this dependency: {:auto_merge=>true, :allowed_semver_bumps=>[:patch]}",
       ])
     end
 
-    it "should make a call to all_proposed_updates_semver_allowed? and return false if false" do
-      policy_manager = PolicyManager.new(remote_config)
-      expect(policy_manager).to receive(:all_proposed_updates_semver_allowed?).and_return(false).at_least(:once)
-      expect(policy_manager.is_auto_mergeable?(mock_pr)).to eq(false)
-      expect(policy_manager.reasons_not_to_merge(mock_pr)).to eq([
-        "PR bumps a dependency to a higher semver than is allowed.",
+    it "should return reasons not to merge the example external dependency" do
+      mock_pr = instance_double("PullRequest")
+      allow(mock_pr).to receive(:commit_message).and_return(
+        <<~COMMIT_MESSAGE,
+          ---
+          updated-dependencies:
+          - dependency-name: #{external_dependency}
+            dependency-type: direct:production
+            update-type: version-update:semver-minor
+        COMMIT_MESSAGE
+      )
+
+      expect(PolicyManager.new(remote_config).is_auto_mergeable?(mock_pr)).to eq(false)
+      expect(PolicyManager.new(remote_config).reasons_not_to_merge(mock_pr)).to eq([
+        "foo minor increase is not allowed by the derived policy for this dependency: {:auto_merge=>false, :allowed_semver_bumps=>[]}",
       ])
     end
 
-    it "should make a call to all_proposed_dependencies_are_internal? and return false if false" do
-      policy_manager = PolicyManager.new(remote_config)
-      expect(policy_manager).to receive(:all_proposed_dependencies_are_internal?).and_return(false).at_least(:once)
-      expect(policy_manager.is_auto_mergeable?(mock_pr)).to eq(false)
-      expect(policy_manager.reasons_not_to_merge(mock_pr)).to eq([
-        "PR bumps an external dependency.",
-      ])
-    end
-  end
+    it "should return empty array if nothing wrong" do
+      mock_pr = instance_double("PullRequest")
+      allow(mock_pr).to receive(:commit_message).and_return(
+        <<~COMMIT_MESSAGE,
+          ---
+          updated-dependencies:
+          - dependency-name: #{internal_dependency}
+            dependency-type: indirect
+            update-type: version-update:semver-patch
+        COMMIT_MESSAGE
+      )
 
-  describe "#all_proposed_dependencies_on_allowlist?" do
-    it "returns false if proposed update hasn't been 'allowed' yet" do
-      manager = PolicyManager.new
-      manager.change_set.changes << Change.new(Dependency.new("foo"), :patch)
-
-      expect(manager.all_proposed_dependencies_on_allowlist?).to eq(false)
-    end
-
-    it "returns false if proposed updates contain a dependency that hasn't been 'allowed' yet, amongst ones that have" do
-      manager = PolicyManager.new
-      manager.allow_dependency_update(name: "foo", allowed_semver_bumps: %w[patch])
-      manager.change_set.changes += [
-        Change.new(Dependency.new("foo"), :patch),
-        Change.new(Dependency.new("something_not_allowed"), :patch),
-      ]
-
-      expect(manager.all_proposed_dependencies_on_allowlist?).to eq(false)
-    end
-
-    it "returns true if all proposed updates are on the allowlist, even if the semver bumps aren't allowed" do
-      manager = PolicyManager.new
-      manager.allow_dependency_update(name: "foo", allowed_semver_bumps: %w[patch])
-      manager.allow_dependency_update(name: "bar", allowed_semver_bumps: %w[patch])
-      manager.change_set.changes += [
-        Change.new(Dependency.new("foo"), :patch), # allowed
-        Change.new(Dependency.new("bar"), :major), # not allowed
-      ]
-
-      expect(manager.all_proposed_dependencies_on_allowlist?).to eq(true)
-    end
-  end
-
-  describe "#all_proposed_updates_semver_allowed?" do
-    # We don't care about whether or not a given dependency is on the allowlist at this point
-    # - that's covered by the `all_proposed_dependencies_on_allowlist?` check.
-    #  This check should only care about whether a given dependency violates the 'allowed_semver_bumps'
-    # that have been explicitly set in the config. If no such config exists for said
-    # dependency, let's not block it here.
-    it "returns true if a proposed update is missing from the allowlist altogether" do
-      manager = PolicyManager.new
-      manager.change_set.changes << Change.new(Dependency.new("foo"), :major)
-
-      expect(manager.all_proposed_updates_semver_allowed?).to eq(true)
-    end
-
-    it "returns true if a proposed update type matches that on the allowlist" do
-      manager = PolicyManager.new
-      manager.allow_dependency_update(name: "foo", allowed_semver_bumps: %w[patch])
-      manager.change_set.changes << Change.new(Dependency.new("foo"), :patch)
-
-      expect(manager.all_proposed_updates_semver_allowed?).to eq(true)
-    end
-
-    it "returns false if a proposed update type does not match that on the allowlist" do
-      manager = PolicyManager.new
-      manager.allow_dependency_update(name: "foo", allowed_semver_bumps: %w[patch])
-      manager.change_set.changes << Change.new(Dependency.new("foo"), :minor)
-
-      expect(manager.all_proposed_updates_semver_allowed?).to eq(false)
-    end
-
-    it "returns false if a proposed update type does not match that on the allowlist, even if others do" do
-      manager = PolicyManager.new
-      manager.allow_dependency_update(name: "foo", allowed_semver_bumps: %w[patch minor major])
-      manager.allow_dependency_update(name: "bar", allowed_semver_bumps: %w[patch])
-      manager.change_set.changes += [
-        Change.new(Dependency.new("foo"), :minor), # allowed
-        Change.new(Dependency.new("bar"), :major), # not allowed
-      ]
-
-      expect(manager.all_proposed_updates_semver_allowed?).to eq(false)
-    end
-  end
-
-  describe "#all_proposed_dependencies_are_internal?" do
-    it "delegates to Dependency#internal?" do
-      dependency = Dependency.new("foo")
-      expect(dependency).to receive(:internal?).and_return(true)
-
-      manager = PolicyManager.new
-      manager.change_set.changes << Change.new(dependency, :major)
-      expect(manager.all_proposed_dependencies_are_internal?).to eq(true)
+      expect(PolicyManager.new(remote_config).is_auto_mergeable?(mock_pr)).to eq(true)
+      expect(PolicyManager.new(remote_config).reasons_not_to_merge(mock_pr)).to eq([])
     end
   end
 
