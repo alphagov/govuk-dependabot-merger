@@ -228,6 +228,26 @@ RSpec.describe PolicyManager do
     end
   end
 
+  describe "#change_allowed?" do
+    it "returns false if `auto_merge` is false" do
+      policy_manager = PolicyManager.new
+      allow(policy_manager).to receive(:dependency_policy).and_return(auto_merge: false)
+      expect(policy_manager.change_allowed?("foo", :patch)).to eq(false)
+    end
+
+    it "returns false if the requested semver isn't allowed" do
+      policy_manager = PolicyManager.new
+      allow(policy_manager).to receive(:dependency_policy).and_return(auto_merge: true, allowed_semver_bumps: %i[patch])
+      expect(policy_manager.change_allowed?("foo", :minor)).to eq(false)
+    end
+
+    it "returns true if both `auto_merge: true` and requested semver is allowed" do
+      policy_manager = PolicyManager.new
+      allow(policy_manager).to receive(:dependency_policy).and_return(auto_merge: true, allowed_semver_bumps: %i[patch])
+      expect(policy_manager.change_allowed?("foo", :patch)).to eq(true)
+    end
+  end
+
   describe "#remote_config_exists?" do
     it "returns false if config doesn't exist" do
       remote_config = { "error" => "404" }

@@ -70,6 +70,11 @@ class PolicyManager
     reasons_not_to_merge
   end
 
+  def change_allowed?(dependency_name, change_type)
+    policy = dependency_policy(dependency_name)
+    policy[:auto_merge] && policy[:allowed_semver_bumps].include?(change_type)
+  end
+
   def allow_dependency_update(name:, allowed_semver_bumps:)
     allowed_dependency_updates << { name:, allowed_semver_bumps: }
   end
