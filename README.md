@@ -53,6 +53,12 @@ You can then run the merger with:
 bundle exec ruby bin/merge_dependabot_prs.rb
 ```
 
+If you want to do a dry run:
+
+```
+bundle exec ruby bin/merge_dependabot_prs.rb --dry-run
+```
+
 The repo also ships with a "doctor" script to help you to debug individual PRs and why they did or did not auto-merge.
 
 ```
