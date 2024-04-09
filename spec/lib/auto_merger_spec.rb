@@ -80,7 +80,7 @@ RSpec.describe AutoMerger do
 
       expect(policy_manager).to receive(:remote_config_exists?)
       expect(AutoMerger).to_not receive(:merge_dependabot_pr)
-      expect { AutoMerger.merge_dependabot_prs }.to output("The remote .govuk_dependabot_merger.yml file is missing.\n").to_stdout
+      expect { AutoMerger.merge_dependabot_prs }.to output("Repo 1: the remote .govuk_dependabot_merger.yml file is missing.\n").to_stdout
     end
 
     it "should make a call to PolicyManager.valid_remote_config_syntax?, which should block merge if false" do
@@ -91,7 +91,7 @@ RSpec.describe AutoMerger do
 
       expect(policy_manager).to receive(:valid_remote_config_syntax?)
       expect(AutoMerger).to_not receive(:merge_dependabot_pr)
-      expect { AutoMerger.merge_dependabot_prs }.to output("The remote .govuk_dependabot_merger.yml YAML syntax is corrupt.\n").to_stdout
+      expect { AutoMerger.merge_dependabot_prs }.to output("Repo 1: the remote .govuk_dependabot_merger.yml YAML syntax is corrupt.\n").to_stdout
     end
 
     it "should make a call to PolicyManager.remote_config_api_version_supported?, which should block merge if false" do
@@ -102,7 +102,16 @@ RSpec.describe AutoMerger do
 
       expect(policy_manager).to receive(:remote_config_api_version_supported?)
       expect(AutoMerger).to_not receive(:merge_dependabot_pr)
-      expect { AutoMerger.merge_dependabot_prs }.to output("The remote .govuk_dependabot_merger.yml file is using an unsupported API version.\n").to_stdout
+      expect { AutoMerger.merge_dependabot_prs }.to output("Repo 1: the remote .govuk_dependabot_merger.yml file is using an unsupported API version.\n").to_stdout
+    end
+
+    it "should announce when no Dependabot PRs were found" do
+      policy_manager # set up the mock policy manager object
+      mock_repo = instance_double("Repo", name: "Repo 1", govuk_dependabot_merger_config: {}, dependabot_pull_requests: [])
+      allow(Repo).to receive(:all).and_return([mock_repo])
+
+      expect(AutoMerger).to_not receive(:merge_dependabot_pr)
+      expect { AutoMerger.merge_dependabot_prs }.to output("Repo 1: no Dependabot PRs found.\n").to_stdout
     end
   end
 

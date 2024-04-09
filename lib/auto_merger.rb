@@ -25,13 +25,13 @@ module AutoMerger
       policy_manager = PolicyManager.new(repo.govuk_dependabot_merger_config)
 
       if !policy_manager.remote_config_exists?
-        puts "The remote .govuk_dependabot_merger.yml file is missing."
+        puts "#{repo.name}: the remote .govuk_dependabot_merger.yml file is missing."
       elsif !policy_manager.valid_remote_config_syntax?
-        puts "The remote .govuk_dependabot_merger.yml YAML syntax is corrupt."
+        puts "#{repo.name}: the remote .govuk_dependabot_merger.yml YAML syntax is corrupt."
       elsif !policy_manager.remote_config_api_version_supported?
-        puts "The remote .govuk_dependabot_merger.yml file is using an unsupported API version."
+        puts "#{repo.name}: the remote .govuk_dependabot_merger.yml file is using an unsupported API version."
       elsif repo.dependabot_pull_requests.count.zero?
-        puts "No Dependabot PRs found for repo '#{repo.name}'."
+        puts "#{repo.name}: no Dependabot PRs found."
       else
         puts "#{repo.dependabot_pull_requests.count} Dependabot PRs found for repo '#{repo.name}':"
 
