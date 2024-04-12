@@ -2,8 +2,8 @@ name: "Merge Dependabot PRs"
 
 on:
   schedule:
-    # 9:30am, Mon-Fri. There is also logic within the script to prevent running on bank holidays.
-    - cron: '30 9 * * 1-5'
+    # 8:30am UTC, Mon-Fri. There is also logic within the script to prevent running on bank holidays.
+    - cron: '30 8 * * 1-5'
   workflow_dispatch: {}
 
 jobs:
