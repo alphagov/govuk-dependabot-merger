@@ -2,14 +2,33 @@ require_relative "./change_set"
 require_relative "./version"
 
 class PolicyManager
-  attr_reader :allowed_dependency_updates
-  attr_accessor :change_set
-
   def initialize(remote_config = {})
     @remote_config = remote_config
-    @allowed_dependency_updates = []
-    @change_set = ChangeSet.new
-    determine_allowed_dependencies
+  end
+
+  def defaults
+    defaults = @remote_config["defaults"] || {}
+    {
+      update_external_dependencies: defaults["update_external_dependencies"].nil? ? false : defaults["update_external_dependencies"],
+      auto_merge: defaults["auto_merge"].nil? ? true : defaults["auto_merge"],
+      allowed_semver_bumps: defaults["allowed_semver_bumps"].nil? ? %i[patch minor] : defaults["allowed_semver_bumps"],
+    }
+  end
+
+  def dependency_policy(dependency_name)
+    dependency_overrides = @remote_config["overrides"]&.find { |dependency| dependency["dependency"] == dependency_name } || {}
+
+    update_external_dependencies = dependency_overrides["update_external_dependencies"].nil? ? defaults[:update_external_dependencies] : dependency_overrides["update_external_dependencies"]
+    allowed_semver_bumps = dependency_overrides["allowed_semver_bumps"].nil? ? defaults[:allowed_semver_bumps] : dependency_overrides["allowed_semver_bumps"]
+    auto_merge = dependency_overrides["auto_merge"].nil? ? defaults[:auto_merge] : dependency_overrides["auto_merge"]
+
+    dependency = Dependency.new(dependency_name)
+    auto_merge = update_external_dependencies if auto_merge && !dependency.internal?
+
+    {
+      auto_merge:,
+      allowed_semver_bumps: auto_merge ? allowed_semver_bumps : [],
+    }
   end
 
   def remote_config_exists?
@@ -24,37 +43,25 @@ class PolicyManager
     @remote_config["api_version"] == DependabotAutoMerge::VERSION
   end
 
-  def allow_dependency_update(name:, allowed_semver_bumps:)
-    allowed_dependency_updates << { name:, allowed_semver_bumps: }
+  def is_auto_mergeable?(pull_request)
+    reasons_not_to_merge(pull_request).count.zero?
   end
 
-  def all_proposed_dependencies_on_allowlist?
-    change_set.changes.all? do |change|
-      allowed_dependency_updates.map { |dep| dep[:name] }.include? change.dependency.name
-    end
-  end
+  def reasons_not_to_merge(pull_request)
+    changes = ChangeSet.from_commit_message(pull_request.commit_message).changes
 
-  def all_proposed_updates_semver_allowed?
-    change_set.changes.all? do |change|
-      dependency = allowed_dependency_updates.find { |dep| dep[:name] == change.dependency.name }
-      dependency.nil? || dependency[:allowed_semver_bumps].include?(change.type.to_s)
-    end
-  end
-
-  def all_proposed_dependencies_are_internal?
-    change_set.changes.all? { |change| change.dependency.internal? }
-  end
-
-private
-
-  def determine_allowed_dependencies
-    if @remote_config["auto_merge"]
-      @remote_config["auto_merge"].each do |dependency|
-        allow_dependency_update(
-          name: dependency["dependency"],
-          allowed_semver_bumps: dependency["allowed_semver_bumps"],
-        )
+    reasons_not_to_merge = []
+    changes.each do |change|
+      unless change_allowed?(change.dependency.name, change.type)
+        reasons_not_to_merge << "#{change.dependency.name} #{change.type} increase is not allowed by the derived policy for this dependency: #{dependency_policy(change.dependency.name)}"
       end
     end
+
+    reasons_not_to_merge
+  end
+
+  def change_allowed?(dependency_name, change_type)
+    policy = dependency_policy(dependency_name)
+    policy[:auto_merge] && policy[:allowed_semver_bumps].include?(change_type)
   end
 end

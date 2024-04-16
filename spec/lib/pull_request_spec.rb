@@ -104,13 +104,7 @@ RSpec.describe PullRequest do
 
   describe "#is_auto_mergeable?" do
     def create_pull_request_instance
-      mock = instance_double("PolicyManager")
-      allow(mock).to receive(:change_set=)
-      allow(mock).to receive(:all_proposed_dependencies_on_allowlist?).and_return(true)
-      allow(mock).to receive(:all_proposed_updates_semver_allowed?).and_return(true)
-      allow(mock).to receive(:all_proposed_dependencies_are_internal?).and_return(true)
-
-      pr = PullRequest.new(pull_request_api_response, mock)
+      pr = PullRequest.new(pull_request_api_response)
       allow(pr).to receive(:validate_single_commit).and_return(true)
       allow(pr).to receive(:validate_files_changed).and_return(true)
       pr
@@ -133,48 +127,6 @@ RSpec.describe PullRequest do
       pr.is_auto_mergeable?
       expect(pr.reasons_not_to_merge).to eq([
         "PR changes files that should not be changed.",
-      ])
-    end
-
-    it "should make a call to PolicyManager.all_proposed_dependencies_on_allowlist?" do
-      stub_successful_check_run
-      stub_remote_commit(head_commit_api_response)
-
-      pr = create_pull_request_instance
-      allow(pr.policy_manager).to receive(:all_proposed_dependencies_on_allowlist?).and_return(false)
-      expect(pr.policy_manager).to receive(:all_proposed_dependencies_on_allowlist?)
-
-      pr.is_auto_mergeable?
-      expect(pr.reasons_not_to_merge).to eq([
-        "PR bumps a dependency that is not on the allowlist.",
-      ])
-    end
-
-    it "should make a call to PolicyManager.all_proposed_updates_semver_allowed?" do
-      stub_successful_check_run
-      stub_remote_commit(head_commit_api_response)
-
-      pr = create_pull_request_instance
-      allow(pr.policy_manager).to receive(:all_proposed_updates_semver_allowed?).and_return(false)
-      expect(pr.policy_manager).to receive(:all_proposed_updates_semver_allowed?)
-
-      pr.is_auto_mergeable?
-      expect(pr.reasons_not_to_merge).to eq([
-        "PR bumps a dependency to a higher semver than is allowed.",
-      ])
-    end
-
-    it "should make a call to PolicyManager.all_proposed_dependencies_are_internal?" do
-      stub_successful_check_run
-      stub_remote_commit(head_commit_api_response)
-
-      pr = create_pull_request_instance
-      allow(pr.policy_manager).to receive(:all_proposed_dependencies_are_internal?).and_return(false)
-      expect(pr.policy_manager).to receive(:all_proposed_dependencies_are_internal?)
-
-      pr.is_auto_mergeable?
-      expect(pr.reasons_not_to_merge).to eq([
-        "PR bumps an external dependency.",
       ])
     end
 

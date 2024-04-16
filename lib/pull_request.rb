@@ -1,17 +1,14 @@
 require "yaml"
-require_relative "./change_set"
 require_relative "./github_client"
-require_relative "./policy_manager"
 
 class PullRequest
   class CannotApproveException < StandardError; end
   class UnexpectedGitHubApiResponse < StandardError; end
 
-  attr_reader :policy_manager, :reasons_not_to_merge
+  attr_reader :reasons_not_to_merge
 
-  def initialize(api_response, policy_manager = PolicyManager.new)
+  def initialize(api_response)
     @api_response = api_response
-    @policy_manager = policy_manager
     @reasons_not_to_merge = []
   end
 
@@ -28,16 +25,6 @@ class PullRequest
       reasons_not_to_merge << "CI workflow doesn't exist."
     elsif !validate_ci_passes
       reasons_not_to_merge << "CI workflow is failing."
-    else
-      policy_manager.change_set = ChangeSet.from_commit_message(commit_message)
-
-      if !policy_manager.all_proposed_dependencies_on_allowlist?
-        reasons_not_to_merge << "PR bumps a dependency that is not on the allowlist."
-      elsif !policy_manager.all_proposed_updates_semver_allowed?
-        reasons_not_to_merge << "PR bumps a dependency to a higher semver than is allowed."
-      elsif !policy_manager.all_proposed_dependencies_are_internal?
-        reasons_not_to_merge << "PR bumps an external dependency."
-      end
     end
 
     reasons_not_to_merge.count.zero?
