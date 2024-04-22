@@ -25,6 +25,15 @@ RSpec.describe Dependency do
 
       expect(Dependency.new("foo").internal?).to eq(false)
     end
+
+    it "returns false if the dependency is not found in Rubygems" do
+      stub_request(:get, "https://rubygems.org/api/v1/gems/foo/owners.yaml")
+      .to_return(
+        body: "This rubygem could not be found.",
+      )
+
+      expect(Dependency.new("foo").internal?).to eq(false)
+    end
   end
 end
 
