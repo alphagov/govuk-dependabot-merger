@@ -107,6 +107,7 @@ RSpec.describe PullRequest do
       pr = PullRequest.new(pull_request_api_response)
       allow(pr).to receive(:validate_single_commit).and_return(true)
       allow(pr).to receive(:validate_files_changed).and_return(true)
+      allow(pr).to receive(:validate_dependabot_commit).and_return(true)
       pr
     end
 
@@ -117,6 +118,16 @@ RSpec.describe PullRequest do
       pr.is_auto_mergeable?
       expect(pr.reasons_not_to_merge).to eq([
         "PR contains more than one commit.",
+      ])
+    end
+
+    it "should return false if GitHub says the commit is not signed by Dependabot" do
+      pr = create_pull_request_instance
+      allow(pr).to receive(:validate_dependabot_commit).and_return(false)
+      expect(pr).to receive(:validate_dependabot_commit)
+      pr.is_auto_mergeable?
+      expect(pr.reasons_not_to_merge).to eq([
+        "PR contains commit not signed by Dependabot.",
       ])
     end
 
