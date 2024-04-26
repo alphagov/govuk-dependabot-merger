@@ -19,6 +19,8 @@ class PullRequest
   def is_auto_mergeable?
     if !validate_single_commit
       reasons_not_to_merge << "PR contains more than one commit."
+    elsif !validate_dependabot_commit
+      reasons_not_to_merge << "PR contains commit not signed by Dependabot."
     elsif !validate_files_changed
       reasons_not_to_merge << "PR changes files that should not be changed."
     elsif !validate_ci_workflow_exists
@@ -81,11 +83,15 @@ class PullRequest
   end
 
   def head_commit
-    @head_commit ||= GitHubClient.instance.commit("alphagov/#{@api_response.base.repo.name}", @api_response.head.sha)
+    @head_commit ||= GitHubClient.instance.commit("alphagov/#{@api_response.base.repo.name}", @api_response.head.sha).commit
   end
 
   def commit_message
-    head_commit.commit.message
+    head_commit.message
+  end
+
+  def validate_dependabot_commit
+    head_commit.verification.verified && head_commit.author.name == "dependabot[bot]"
   end
 
 private
