@@ -45,10 +45,10 @@ module AutoMerger
   end
 
   def self.merge_dependabot_pr(pull_request, policy_manager, dry_run: true)
-    if !policy_manager.is_auto_mergeable?(pull_request)
+    if !pull_request.is_auto_mergeable?
+      puts "    ...bad PR: #{pull_request.reasons_not_to_merge.join(' ')} Skipping."
+    elsif !policy_manager.is_auto_mergeable?(pull_request)
       puts "    ...auto-merging is against policy: #{policy_manager.reasons_not_to_merge(pull_request).join(' ')} Skipping."
-    elsif !pull_request.is_auto_mergeable?
-      puts "    ...auto-merging is allowable in theory, but bad PR: #{pull_request.reasons_not_to_merge.join(' ')} Skipping."
     elsif dry_run
       puts "    ...eligible for auto-merge! This is a dry run, so skipping."
     else
