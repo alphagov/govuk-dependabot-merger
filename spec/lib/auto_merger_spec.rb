@@ -145,7 +145,7 @@ RSpec.describe AutoMerger do
 
       expect_no_merge(mock_pr)
       expect { AutoMerger.merge_dependabot_pr(mock_pr, policy_manager, dry_run: false) }.to output(
-        "    ...auto-merging is allowable in theory, but bad PR: Bar. Skipping.\n",
+        "    ...bad PR: Bar. Skipping.\n",
       ).to_stdout
     end
 
