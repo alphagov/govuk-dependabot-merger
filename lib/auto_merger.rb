@@ -62,7 +62,9 @@ module AutoMerger
   def self.analyse_dependabot_pr(url)
     puts "Analysing #{url}..."
     _, repo_name, pr_number = url.match(/alphagov\/(.+)\/pull\/(.+)$/).to_a
-    pr = Repo.new(repo_name).dependabot_pull_request(pr_number)
-    merge_dependabot_pr(pr, dry_run: true)
+    repo = Repo.new(repo_name)
+    pr = repo.dependabot_pull_request(pr_number)
+    policy_manager = PolicyManager.new(repo.govuk_dependabot_merger_config)
+    merge_dependabot_pr(pr, policy_manager, dry_run: true)
   end
 end
