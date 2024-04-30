@@ -164,11 +164,13 @@ RSpec.describe AutoMerger do
   describe ".analyse_dependabot_pr" do
     it "uses `merge_dependabot_pr` under the hood" do
       mock_pr = instance_double("PullRequest")
-      mock_repo = instance_double("Repo", dependabot_pull_request: mock_pr)
+      mock_repo = instance_double("Repo", dependabot_pull_request: mock_pr, govuk_dependabot_merger_config: {})
+      mock_policy_manager = {}
       allow(Repo).to receive(:new).with("foo").and_return(mock_repo)
+      allow(PolicyManager).to receive(:new).and_return(mock_policy_manager)
 
       expect(mock_repo).to receive(:dependabot_pull_request).with("1234")
-      expect(AutoMerger).to receive(:merge_dependabot_pr).with(mock_pr, dry_run: true)
+      expect(AutoMerger).to receive(:merge_dependabot_pr).with(mock_pr, mock_policy_manager, dry_run: true)
       AutoMerger.analyse_dependabot_pr("https://github.com/alphagov/foo/pull/1234")
     end
   end
