@@ -27,7 +27,7 @@ class PolicyManager
 
     {
       auto_merge:,
-      allowed_semver_bumps: auto_merge ? allowed_semver_bumps : [],
+      allowed_semver_bumps: auto_merge ? allowed_semver_bumps.map(&:to_sym) : [],
     }
   end
 
