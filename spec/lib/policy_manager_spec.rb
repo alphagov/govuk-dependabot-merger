@@ -178,6 +178,24 @@ RSpec.describe PolicyManager do
           allowed_semver_bumps:,
         })
       end
+
+      it "converts default allowed_semver_bumps to symbols" do
+        remote_config["defaults"]["allowed_semver_bumps"] = %w[patch minor]
+
+        expect(policy_manager.dependency_policy(external_dependency)).to eq({
+          auto_merge: true,
+          allowed_semver_bumps: %i[patch minor],
+        })
+      end
+
+      it "converts overridden allowed_semver_bumps to symbols" do
+        remote_config["overrides"] = [{ "dependency" => external_dependency, "allowed_semver_bumps" => %w[patch] }]
+
+        expect(policy_manager.dependency_policy(external_dependency)).to eq({
+          auto_merge: true,
+          allowed_semver_bumps: %i[patch],
+        })
+      end
     end
   end
 
