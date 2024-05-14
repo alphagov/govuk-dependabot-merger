@@ -58,6 +58,8 @@ class PolicyManager
     end
 
     reasons_not_to_merge
+  rescue UnexpectedCommitMessage => e
+    [e.message]
   end
 
   def change_allowed?(dependency_name, change_type)
