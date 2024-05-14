@@ -9,6 +9,8 @@ Dependency = Struct.new(:name) do
   end
 end
 
+class UnexpectedCommitMessage < StandardError; end
+
 Change = Struct.new(:dependency, :type) do
   def self.type_from_dependabot_type(dependabot_type)
     case dependabot_type
@@ -21,7 +23,7 @@ Change = Struct.new(:dependency, :type) do
     else
       # As of March 2024, these are the only options Dependabot can return
       # If they add more in the future, we will need to update this
-      raise "Unrecognised update-type: #{dependabot_type}"
+      raise(UnexpectedCommitMessage, "Unrecognised update-type: #{dependabot_type}")
     end
   end
 end
@@ -47,6 +49,6 @@ class ChangeSet
       }
       .then { |changes| ChangeSet.new changes }
   rescue StandardError
-    raise "Commit message is not in the expected format"
+    raise(UnexpectedCommitMessage, "Commit message is not in the expected format")
   end
 end

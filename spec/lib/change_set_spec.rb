@@ -43,7 +43,7 @@ RSpec.describe Change do
       expect(Change.type_from_dependabot_type("version-update:semver-major")).to eq(:major)
       expect(Change.type_from_dependabot_type("version-update:semver-minor")).to eq(:minor)
       expect(Change.type_from_dependabot_type("version-update:semver-patch")).to eq(:patch)
-      expect { Change.type_from_dependabot_type("foo") }.to raise_error(RuntimeError, "Unrecognised update-type: foo")
+      expect { Change.type_from_dependabot_type("foo") }.to raise_error(UnexpectedCommitMessage, "Unrecognised update-type: foo")
     end
   end
 end
@@ -124,11 +124,11 @@ RSpec.describe ChangeSet do
     it "raises an error if the commit message is not in the expected format" do
       expect {
         ChangeSet.from_commit_message("Hello world!")
-      }.to raise_error(RuntimeError, "Commit message is not in the expected format")
+      }.to raise_error(UnexpectedCommitMessage, "Commit message is not in the expected format")
 
       expect {
         ChangeSet.from_commit_message("foo\n---\nsyntax: error:\n...\nbar")
-      }.to raise_error(RuntimeError, "Commit message is not in the expected format")
+      }.to raise_error(UnexpectedCommitMessage, "Commit message is not in the expected format")
     end
   end
 end

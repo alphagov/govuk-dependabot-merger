@@ -343,6 +343,23 @@ RSpec.describe PolicyManager do
       ])
     end
 
+    it "should return reasons not to merge when commit message is not in the expected format" do
+      mock_pr = instance_double("PullRequest")
+      allow(mock_pr).to receive(:commit_message).and_return(
+        <<~COMMIT_MESSAGE,
+          ---
+          updated-dependencies:
+          - dependency-name: #{external_dependency}
+            dependency-type: direct:production
+        COMMIT_MESSAGE
+      )
+
+      expect(PolicyManager.new(remote_config).is_auto_mergeable?(mock_pr)).to eq(false)
+      expect(PolicyManager.new(remote_config).reasons_not_to_merge(mock_pr)).to eq([
+        "Commit message is not in the expected format",
+      ])
+    end
+
     it "should return empty array if nothing wrong" do
       mock_pr = instance_double("PullRequest")
       allow(mock_pr).to receive(:commit_message).and_return(
