@@ -40,8 +40,8 @@ class PullRequest
   def validate_files_changed
     commit = GitHubClient.instance.commit("alphagov/#{@api_response.base.repo.name}", @api_response.head.sha)
     files_changed = commit.files.map(&:filename)
-    # TODO: support other package managers too (e.g. NPM)
-    files_changed == ["Gemfile.lock"]
+    allowed_files = ["yarn.lock", "Gemfile.lock"]
+    (files_changed - allowed_files).empty?
   end
 
   def validate_ci_workflow_exists
