@@ -36,13 +36,13 @@
 - govuk-sli-collector
 - govuk-user-reviewer
 - hmrc-manuals-api
-- imminence
 - link-checker-api
 - local-links-manager
 - locations-api
 - manuals-publisher
 - maslow
 - optic14n
+- places-manager
 - plek
 - publisher
 - publishing-api
