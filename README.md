@@ -26,12 +26,14 @@ overrides:
     allowed_semver_bumps:
       - patch
   # Example of opting a specific dependency out of automatic patching:
-  - dependency: govuk_publishing_components
+  - dependency: rails # should be upgraded manually, see https://docs.publishing.service.gov.uk/manual/keeping-software-current.html#rails
     auto_merge: false
   # Example of opting a specific dependency into automatic patching:
   - dependency: rspec
     update_external_dependencies: true
 ```
+
+> We generally [advise taking extra care with Rails upgrades](https://docs.publishing.service.gov.uk/manual/keeping-software-current.html#rails) therefore those upgrades shouldn't be auto-merged.
 
 After you've merged your config file into your main branch, you just need to add your repository to the [config/repos_opted_in.yml](config/repos_opted_in.yml) list in govuk-dependabot-merger.
 
