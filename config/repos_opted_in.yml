@@ -3,6 +3,7 @@
 - authenticating-proxy
 - bouncer
 - bulk-changer
+- bulk-merger
 - collections
 - collections-publisher
 - contacts-admin
@@ -18,6 +19,7 @@
 - gds_zendesk
 - gds-api-adapters
 - gds-sso
+- github-trello-poster
 - government-frontend
 - govspeak
 - govspeak-preview
@@ -29,10 +31,12 @@
 - govuk_sidekiq
 - govuk_test
 - govuk-content-api-docs
+- govuk-dependency-checker
 - govuk-developer-docs
 - govuk-docker
 - govuk-rota-announcer
 - govuk-rota-generator
+- govuk-saas-config
 - govuk-sli-collector
 - govuk-user-reviewer
 - hmrc-manuals-api
@@ -48,11 +52,13 @@
 - publishing-api
 - rack-logstasher
 - release
+- rubocop-govuk
 - seal
 - search-api-v2
 - service-manual-publisher
 - short-url-manager
 - signon
+- siteimprove_api_client
 - smart-answers
 - specialist-publisher
 - support
