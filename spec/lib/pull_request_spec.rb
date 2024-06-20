@@ -105,29 +105,18 @@ RSpec.describe PullRequest do
   describe "#is_auto_mergeable?" do
     def create_pull_request_instance
       pr = PullRequest.new(pull_request_api_response)
-      allow(pr).to receive(:validate_single_commit).and_return(true)
+      allow(pr).to receive(:validate_bot_commit).and_return(true)
       allow(pr).to receive(:validate_files_changed).and_return(true)
-      allow(pr).to receive(:validate_dependabot_commit).and_return(true)
       pr
     end
 
-    it "should make a call to validate_single_commit" do
+    it "should make a call to validate_bot_commit" do
       pr = create_pull_request_instance
-      allow(pr).to receive(:validate_single_commit).and_return(false)
-      expect(pr).to receive(:validate_single_commit)
+      allow(pr).to receive(:validate_bot_commit).and_return(false)
+      expect(pr).to receive(:validate_bot_commit)
       pr.is_auto_mergeable?
       expect(pr.reasons_not_to_merge).to eq([
-        "PR contains more than one commit.",
-      ])
-    end
-
-    it "should return false if GitHub says the commit is not signed by Dependabot" do
-      pr = create_pull_request_instance
-      allow(pr).to receive(:validate_dependabot_commit).and_return(false)
-      expect(pr).to receive(:validate_dependabot_commit)
-      pr.is_auto_mergeable?
-      expect(pr.reasons_not_to_merge).to eq([
-        "PR contains commit not signed by Dependabot.",
+        "PR contains commit not by Dependabot or govuk-ci.",
       ])
     end
 
@@ -163,33 +152,57 @@ RSpec.describe PullRequest do
     end
   end
 
-  describe "#validate_single_commit" do
-    let(:commit_response) do
-      {
-        sha: "abc123",
-        commit: {
+  describe "#validate_bot_commit" do
+    let(:allowed_bots_commit_response) do
+      [
+        {
+          sha: "abc123",
           author: {
-            name: "dependabot[bot]",
+            login: "dependabot[bot]",
           },
         },
-      }
+        {
+          sha: "def456",
+          author: {
+            login: "govuk-ci",
+          },
+        },
+      ]
     end
+
     let(:commit_api_url) { "https://api.github.com/repos/alphagov/#{repo_name}/pulls/1/commits" }
 
-    it "return true if PR contains a single commit" do
+    it "returns true if PR only contains commits by allowed bots" do
       stub_request(:get, commit_api_url)
-        .to_return(status: 200, body: [commit_response])
+        .to_return(status: 200, body: allowed_bots_commit_response.to_json)
 
       pr = PullRequest.new(pull_request_api_response)
-      expect(pr.validate_single_commit).to eq(true)
+      expect(pr.validate_bot_commit).to eq(true)
     end
 
-    it "return false if PR contains more than one commit" do
+    let(:not_allowed_commit_response) do
+      [
+        {
+          sha: "abc123",
+          author: {
+            login: "dependabot[bot]",
+          },
+        },
+        {
+          sha: "def456",
+          author: {
+            login: "croissant",
+          },
+        },
+      ]
+    end
+
+    it "returns false if PR contains commit not by allowed bots" do
       stub_request(:get, commit_api_url)
-        .to_return(status: 200, body: [commit_response, commit_response])
+        .to_return(status: 200, body: not_allowed_commit_response.to_json)
 
       pr = PullRequest.new(pull_request_api_response)
-      expect(pr.validate_single_commit).to eq(false)
+      expect(pr.validate_bot_commit).to eq(false)
     end
   end
 

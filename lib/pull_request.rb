@@ -17,10 +17,8 @@ class PullRequest
   end
 
   def is_auto_mergeable?
-    if !validate_single_commit
-      reasons_not_to_merge << "PR contains more than one commit."
-    elsif !validate_dependabot_commit
-      reasons_not_to_merge << "PR contains commit not signed by Dependabot."
+    if !validate_bot_commit
+      reasons_not_to_merge << "PR contains commit not by Dependabot or govuk-ci."
     elsif !validate_files_changed
       reasons_not_to_merge << "PR changes files that should not be changed."
     elsif !validate_ci_workflow_exists
@@ -32,15 +30,16 @@ class PullRequest
     reasons_not_to_merge.count.zero?
   end
 
-  def validate_single_commit
-    commits = GitHubClient.instance.pull_request_commits("alphagov/#{@api_response.base.repo.name}", @api_response.number)
-    commits.count == 1
+  def validate_bot_commit
+    commits_json = GitHubClient.instance.pull_request_commits("alphagov/#{@api_response.base.repo.name}", @api_response.number)
+    commits = JSON.parse(commits_json)
+    commits.all? { |commit| ["dependabot[bot]", "govuk-ci"].include?(commit["author"]["login"]) }
   end
 
   def validate_files_changed
     commit = GitHubClient.instance.commit("alphagov/#{@api_response.base.repo.name}", @api_response.head.sha)
     files_changed = commit.files.map(&:filename)
-    allowed_files = ["yarn.lock", "Gemfile.lock", "#{@api_response.base.repo.name}.gemspec"]
+    allowed_files = ["yarn.lock", "Gemfile.lock", "#{@api_response.base.repo.name}.gemspec", "CHANGELOG.md", "version.rb"]
     (files_changed - allowed_files).empty?
   end
 
@@ -88,10 +87,6 @@ class PullRequest
 
   def commit_message
     head_commit.message
-  end
-
-  def validate_dependabot_commit
-    head_commit.verification.verified && head_commit.author.name == "dependabot[bot]"
   end
 
 private
