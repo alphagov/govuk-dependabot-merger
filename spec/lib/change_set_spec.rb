@@ -46,6 +46,69 @@ RSpec.describe Change do
       expect { Change.type_from_dependabot_type("foo") }.to raise_error(UnexpectedCommitMessage, "Unrecognised update-type: foo")
     end
   end
+
+  describe ".extract_commit_info" do
+    it "scenario 1" do
+      result = Change.extract_commit_info("Bump foo from 1.2.3 to 2.3.4")
+      expect(result).to eq({ from_version: "1.2.3", to_version: "2.3.4" })
+    end
+
+    it "scenario 2" do
+      result = Change.extract_commit_info("[Security] Bump bar from 3.2.1 to 4.2.1")
+      expect(result).to eq({ from_version: "3.2.1", to_version: "4.2.1" })
+    end
+
+    it "scenario 3" do
+      result = Change.extract_commit_info("build(deps): bump baz from 0.1.0 to 0.2.0")
+      expect(result).to eq({ from_version: "0.1.0", to_version: "0.2.0" })
+    end
+
+    it "scenario 4" do
+      result = Change.extract_commit_info("Update foo requirement from ~> 1.0 to ~> 2.0")
+      expect(result).to eq({ from_version: "1.0", to_version: "2.0" })
+    end
+
+    it "scenario 5" do
+      result = Change.extract_commit_info("Update bar requirement from = 2.25.0 to = 2.25.1")
+      expect(result).to eq({ from_version: "2.25.0", to_version: "2.25.1" })
+    end
+
+    it "scenario 6" do
+      result = Change.extract_commit_info("Update foo requirement from >= 1.0 to < 2.0")
+      expect(result).to be_nil
+    end
+
+    it "scenario 7" do
+      result = Change.extract_commit_info("Update bar requirement from >= 1.0, < 2.0 to >= 1.1, < 2.1")
+      expect(result).to be_nil
+    end
+  end
+
+  describe ".determine_update_type" do
+    it "returns nil for invalid versions" do
+      expect(Change.determine_update_type("1.2.3", "invalid_version")).to be_nil
+      expect(Change.determine_update_type(nil, nil)).to be_nil
+    end
+
+    it "returns :major for major version updates" do
+      expect(Change.determine_update_type("1.2.3", "2.0.0")).to eq(:major)
+      expect(Change.determine_update_type("0.9.0", "1.0.0")).to eq(:major)
+    end
+
+    it "returns :minor for minor version updates" do
+      expect(Change.determine_update_type("1.2.3", "1.3.0")).to eq(:minor)
+      expect(Change.determine_update_type("0.9.9", "0.10.0")).to eq(:minor)
+    end
+
+    it "returns :patch for patch version updates" do
+      expect(Change.determine_update_type("1.2.3", "1.2.4")).to eq(:patch)
+      expect(Change.determine_update_type("0.1.2", "0.1.3")).to eq(:patch)
+    end
+
+    it "returns nil when there is no version difference" do
+      expect(Change.determine_update_type("1.2.3", "1.2.3")).to be_nil
+    end
+  end
 end
 
 RSpec.describe ChangeSet do
@@ -62,6 +125,24 @@ RSpec.describe ChangeSet do
       - dependency-name: govuk_publishing_components
         dependency-type: direct:production
         update-type: version-update:semver-minor
+      ...
+
+      Signed-off-by: dependabot[bot] <support@github.com>
+    TEXT
+  end
+
+  def missing_update_type_commit
+    <<~TEXT
+      Bump govuk_publishing_components from 35.7.0 to 35.8.0
+
+      Bumps [govuk_publishing_components](https://github.com/alphagov/govuk_publishing_components) from 35.7.0 to 35.8.0.
+      - [Changelog](https://github.com/alphagov/govuk_publishing_components/blob/main/CHANGELOG.md)
+      - [Commits](alphagov/govuk_publishing_components@v35.7.0...v35.8.0)
+
+      ---
+      updated-dependencies:
+      - dependency-name: govuk_publishing_components
+        dependency-type: direct:production
       ...
 
       Signed-off-by: dependabot[bot] <support@github.com>
@@ -107,6 +188,13 @@ RSpec.describe ChangeSet do
   describe ".from_commit_message" do
     it "parses the commit message to discover the changed dependencies" do
       change_set = ChangeSet.from_commit_message single_dependency_commit
+      expect(change_set.changes).to eq([
+        Change.new(Dependency.new("govuk_publishing_components"), :minor),
+      ])
+    end
+
+    it "determines update type when missing from commit" do
+      change_set = ChangeSet.from_commit_message missing_update_type_commit
       expect(change_set.changes).to eq([
         Change.new(Dependency.new("govuk_publishing_components"), :minor),
       ])
