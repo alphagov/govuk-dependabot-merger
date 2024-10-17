@@ -201,6 +201,16 @@ RSpec.describe PullRequest do
       expect(pr.validate_files_changed).to eq(true)
     end
 
+    it "returns true if PR changes Gemfile and Gemfile.lock" do
+      gemfile = head_commit_api_response[:files].first.dup
+      gemfile[:filename] = "Gemfile"
+      head_commit_api_response[:files] << gemfile
+      stub_remote_commit(head_commit_api_response)
+
+      pr = PullRequest.new(pull_request_api_response)
+      expect(pr.validate_files_changed).to eq(true)
+    end
+
     it "returns true if PR only changes yarn.lock" do
       head_commit_api_response[:files][0][:filename] = "yarn.lock"
       stub_remote_commit(head_commit_api_response)
