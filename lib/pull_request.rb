@@ -40,7 +40,7 @@ class PullRequest
   def validate_files_changed
     commit = GitHubClient.instance.commit("alphagov/#{@api_response.base.repo.name}", @api_response.head.sha)
     files_changed = commit.files.map(&:filename)
-    allowed_files = ["yarn.lock", "Gemfile.lock", "Gemfile", "#{@api_response.base.repo.name}.gemspec"]
+    allowed_files = ["yarn.lock", "package.json", "Gemfile.lock", "Gemfile", "#{@api_response.base.repo.name}.gemspec"]
     (files_changed - allowed_files).empty?
   end
 

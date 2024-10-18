@@ -219,6 +219,16 @@ RSpec.describe PullRequest do
       expect(pr.validate_files_changed).to eq(true)
     end
 
+    it "returns true if PR changes package.json" do
+      pkg_json = head_commit_api_response[:files].first.dup
+      pkg_json[:filename] = "package.json"
+      head_commit_api_response[:files] << pkg_json
+      stub_remote_commit(head_commit_api_response)
+
+      pr = PullRequest.new(pull_request_api_response)
+      expect(pr.validate_files_changed).to eq(true)
+    end
+
     it "returns false if PR changes anything else" do
       head_commit_api_response[:files][0][:filename] = "something_else.rb"
       stub_remote_commit(head_commit_api_response)
