@@ -56,6 +56,7 @@
 - release
 - rubocop-govuk
 - seal
+- search-admin
 - search-api-v2
 - service-manual-publisher
 - short-url-manager
