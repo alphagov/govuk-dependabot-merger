@@ -11,10 +11,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 #v4.2.2
 
       - name: Setup ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@1a615958ad9d422dd932dc1d5823942ee002799f #v1.227.0
         with:
           bundler-cache: true
 
@@ -23,3 +23,10 @@ jobs:
           AUTO_MERGE_TOKEN: ${{ secrets.AUTO_MERGE_TOKEN }}
         run: |
           bundle exec ruby bin/merge_dependabot_prs.rb
+
+      - name: Report GitHub workflow run failure to Slack
+        if: ${{ failure() }}
+        uses: alphagov/govuk-infrastrtucture/.github/actions/report-run-failure@main
+        with:
+          slack_webhook_url: ${{ secrets.GOVUK_SLACK_WEBHOOK_URL }}
+          channel: govuk-platform-support
