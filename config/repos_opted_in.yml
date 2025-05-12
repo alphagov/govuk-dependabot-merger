@@ -29,6 +29,7 @@
 - govuk_app_config
 - govuk_message_queue_consumer
 - govuk_personalisation
+- govuk_publishing_components
 - govuk_schemas
 - govuk_sidekiq
 - govuk_test
