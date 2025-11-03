@@ -24,6 +24,7 @@
 - govspeak-preview
 - govspeak-visual-editor
 - govuk_app_config
+- govuk_content_block_tools
 - govuk_message_queue_consumer
 - govuk_personalisation
 - govuk_schemas
