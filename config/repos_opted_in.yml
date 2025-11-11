@@ -6,8 +6,10 @@
 - bulk-merger
 - collections
 - collections-publisher
+- content-block-manager
 - content-data-admin
 - content-data-api
+- content-modelling-e2e
 - content-store
 - content-tagger
 - email-alert-api
