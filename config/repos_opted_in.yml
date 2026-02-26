@@ -34,6 +34,7 @@
 - govuk_sidekiq
 - govuk_test
 - govuk-content-api-docs
+- govuk-content-publishing-guidance
 - govuk_content_item_loader
 - govuk-dependency-checker
 - govuk-developer-docs
