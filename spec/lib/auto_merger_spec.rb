@@ -12,6 +12,7 @@ RSpec.describe AutoMerger do
     allow(mock_policy_manager).to receive(:valid_remote_config_syntax?).and_return(true)
     allow(mock_policy_manager).to receive(:remote_config_api_version_supported?).and_return(true)
     allow(mock_policy_manager).to receive(:is_auto_mergeable?).and_return(true)
+    allow(mock_policy_manager).to receive(:deprecated_config_warnings).and_return([])
     allow(PolicyManager).to receive(:new).and_return(mock_policy_manager)
     mock_policy_manager
   end

@@ -29,6 +29,24 @@ class PolicyManager
     }
   end
 
+  def deprecated_config_warnings
+    warnings = []
+    defaults = @remote_config["defaults"] || {}
+    overrides = @remote_config["overrides"] || []
+
+    if defaults.key?("update_external_dependencies")
+      warnings << "the `update_external_dependencies` setting in `defaults` is deprecated and will be ignored. External dependencies are no longer auto-merged."
+    end
+
+    overrides.each do |override|
+      if override.key?("update_external_dependencies")
+        warnings << "the `update_external_dependencies` setting for `#{override['dependency']}` is deprecated and will be ignored. External dependencies are no longer auto-merged."
+      end
+    end
+
+    warnings
+  end
+
   def remote_config_exists?
     @remote_config["error"] != "404"
   end

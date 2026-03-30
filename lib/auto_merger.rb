@@ -30,15 +30,21 @@ module AutoMerger
         puts "#{repo.name}: the remote .govuk_dependabot_merger.yml YAML syntax is corrupt."
       elsif !policy_manager.remote_config_api_version_supported?
         puts "#{repo.name}: the remote .govuk_dependabot_merger.yml file is using an unsupported API version."
-      elsif repo.dependabot_pull_requests.count.zero?
-        puts "#{repo.name}: no Dependabot PRs found."
       else
-        puts "#{repo.dependabot_pull_requests.count} Dependabot PRs found for repo '#{repo.name}':"
+        policy_manager.deprecated_config_warnings.each do |warning|
+          puts "#{repo.name}: WARNING - #{warning}"
+        end
 
-        repo.dependabot_pull_requests.each do |pr|
-          puts "  - Inspecting #{repo.name}##{pr.number}..."
+        if repo.dependabot_pull_requests.count.zero?
+          puts "#{repo.name}: no Dependabot PRs found."
+        else
+          puts "#{repo.dependabot_pull_requests.count} Dependabot PRs found for repo '#{repo.name}':"
 
-          merge_dependabot_pr(pr, policy_manager, dry_run:)
+          repo.dependabot_pull_requests.each do |pr|
+            puts "  - Inspecting #{repo.name}##{pr.number}..."
+
+            merge_dependabot_pr(pr, policy_manager, dry_run:)
+          end
         end
       end
     end
