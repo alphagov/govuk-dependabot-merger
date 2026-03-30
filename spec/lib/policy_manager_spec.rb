@@ -5,15 +5,9 @@ RSpec.describe PolicyManager do
   describe "#defaults" do
     it "returns set of default behaviours" do
       expect(PolicyManager.new.defaults).to eq({
-        update_external_dependencies: false,
         auto_merge: true,
         allowed_semver_bumps: %i[patch minor],
       })
-    end
-
-    it "can override the default `update_external_dependencies` property via remote config" do
-      remote_config = { "defaults" => { "update_external_dependencies" => true } }
-      expect(PolicyManager.new(remote_config).defaults[:update_external_dependencies]).to eq(true)
     end
 
     it "can override the default `auto_merge` property via remote config" do
@@ -40,15 +34,10 @@ RSpec.describe PolicyManager do
       let(:expected_policy) { { auto_merge: true, allowed_semver_bumps: } }
       it { expect(policy_manager.dependency_policy(internal_dependency)).to eq(expected_policy) }
     end
-    RSpec.shared_examples "allows auto-merging external dependencies" do
-      let(:expected_policy) { { auto_merge: true, allowed_semver_bumps: } }
-      it { expect(policy_manager.dependency_policy(external_dependency)).to eq(expected_policy) }
-    end
     let(:policy_manager) { PolicyManager.new(remote_config) }
     let(:remote_config) do
       {
         "defaults" => {
-          "update_external_dependencies" => update_external_dependencies,
           "auto_merge" => auto_merge,
           "allowed_semver_bumps" => allowed_semver_bumps,
         },
@@ -58,44 +47,22 @@ RSpec.describe PolicyManager do
     let(:internal_dependency) { stub_internal_dependency("govuk_publishing_components") }
     let(:external_dependency) { stub_external_dependency("foo") }
 
-    context "auto merge disabled, external dependencies disabled" do
+    context "auto merge disabled" do
       let(:auto_merge) { false }
-      let(:update_external_dependencies) { false }
 
       it_behaves_like "doesn't allow auto-merging internal dependencies"
       it_behaves_like "doesn't allow auto-merging external dependencies"
     end
 
-    context "auto merge disabled, external dependencies enabled" do
-      let(:auto_merge) { false }
-      let(:update_external_dependencies) { true }
-
-      it_behaves_like "doesn't allow auto-merging internal dependencies"
-      it_behaves_like "doesn't allow auto-merging external dependencies"
-    end
-
-    context "auto merge enabled, external dependencies disabled" do
+    context "auto merge enabled" do
       let(:auto_merge) { true }
-      let(:update_external_dependencies) { false }
 
       it_behaves_like "allows auto-merging internal dependencies"
       it_behaves_like "doesn't allow auto-merging external dependencies"
-    end
-
-    context "auto merge enabled, external dependencies enabled" do
-      let(:auto_merge) { true }
-      let(:update_external_dependencies) { true }
-
-      it_behaves_like "allows auto-merging internal dependencies"
-      it_behaves_like "allows auto-merging external dependencies"
     end
 
     context "general tests for overrides" do
-      # these `let`s are included so `remote_config` doesn't raise an exception, but each
-      # individual test should override the relevant bits of `remote_config["defaults"]`
-      # for explicitness.
       let(:auto_merge) { true }
-      let(:update_external_dependencies) { true }
 
       it "refers to overridden 'allowed_semver_bumps' value for dependencies if provided" do
         remote_config["defaults"]["allowed_semver_bumps"] = %i[patch]
@@ -125,25 +92,13 @@ RSpec.describe PolicyManager do
         })
       end
 
-      it "doesn't allow auto-merging external dependencies if they override `update_external_dependencies` to false" do
+      it "never allows auto-merging external dependencies even with auto_merge override" do
         remote_config["defaults"]["auto_merge"] = true
-        remote_config["defaults"]["update_external_dependencies"] = true
-        remote_config["overrides"] = [{ "dependency" => external_dependency, "update_external_dependencies" => false }]
+        remote_config["overrides"] = [{ "dependency" => external_dependency, "auto_merge" => true }]
 
         expect(policy_manager.dependency_policy(external_dependency)).to eq({
           auto_merge: false,
           allowed_semver_bumps: [],
-        })
-      end
-
-      it "allows allow-listed external dependencies to be auto-merged" do
-        remote_config["defaults"]["auto_merge"] = false
-        remote_config["defaults"]["update_external_dependencies"] = true
-        remote_config["overrides"] = [{ "dependency" => external_dependency, "auto_merge" => true }]
-
-        expect(policy_manager.dependency_policy(external_dependency)).to eq({
-          auto_merge: true,
-          allowed_semver_bumps:,
         })
       end
 
@@ -157,41 +112,19 @@ RSpec.describe PolicyManager do
         })
       end
 
-      it "doesn't allow overridden external dependencies to be auto-merged (due to `update_external_dependencies`)" do
-        remote_config["defaults"]["auto_merge"] = false
-        remote_config["defaults"]["update_external_dependencies"] = false
-        remote_config["overrides"] = [{ "dependency" => external_dependency, "auto_merge" => true }]
-
-        expect(policy_manager.dependency_policy(external_dependency)).to eq({
-          auto_merge: false,
-          allowed_semver_bumps: [],
-        })
-      end
-
-      it "allows overridden external dependencies to be auto-merged if `update_external_dependencies` is overridden to `true`" do
-        remote_config["defaults"]["auto_merge"] = false
-        remote_config["defaults"]["update_external_dependencies"] = false
-        remote_config["overrides"] = [{ "dependency" => external_dependency, "auto_merge" => true, "update_external_dependencies" => true }]
-
-        expect(policy_manager.dependency_policy(external_dependency)).to eq({
-          auto_merge: true,
-          allowed_semver_bumps:,
-        })
-      end
-
       it "converts default allowed_semver_bumps to symbols" do
         remote_config["defaults"]["allowed_semver_bumps"] = %w[patch minor]
 
-        expect(policy_manager.dependency_policy(external_dependency)).to eq({
+        expect(policy_manager.dependency_policy(internal_dependency)).to eq({
           auto_merge: true,
           allowed_semver_bumps: %i[patch minor],
         })
       end
 
       it "converts overridden allowed_semver_bumps to symbols" do
-        remote_config["overrides"] = [{ "dependency" => external_dependency, "allowed_semver_bumps" => %w[patch] }]
+        remote_config["overrides"] = [{ "dependency" => internal_dependency, "allowed_semver_bumps" => %w[patch] }]
 
-        expect(policy_manager.dependency_policy(external_dependency)).to eq({
+        expect(policy_manager.dependency_policy(internal_dependency)).to eq({
           auto_merge: true,
           allowed_semver_bumps: %i[patch],
         })
@@ -236,6 +169,38 @@ RSpec.describe PolicyManager do
       policy_manager = PolicyManager.new
       allow(policy_manager).to receive(:dependency_policy).and_return(auto_merge: true, allowed_semver_bumps: %i[patch])
       expect(policy_manager.change_allowed?("foo", :patch)).to eq(true)
+    end
+  end
+
+  describe "#deprecated_config_warnings" do
+    it "returns no warnings when update_external_dependencies is not present" do
+      remote_config = { "defaults" => { "auto_merge" => true } }
+      expect(PolicyManager.new(remote_config).deprecated_config_warnings).to eq([])
+    end
+
+    it "returns a warning when update_external_dependencies is in defaults" do
+      remote_config = { "defaults" => { "update_external_dependencies" => true } }
+      warnings = PolicyManager.new(remote_config).deprecated_config_warnings
+      expect(warnings.length).to eq(1)
+      expect(warnings.first).to include("update_external_dependencies")
+      expect(warnings.first).to include("deprecated")
+    end
+
+    it "returns a warning when update_external_dependencies is in an override" do
+      remote_config = { "defaults" => {}, "overrides" => [{ "dependency" => "rspec", "update_external_dependencies" => true }] }
+      warnings = PolicyManager.new(remote_config).deprecated_config_warnings
+      expect(warnings.length).to eq(1)
+      expect(warnings.first).to include("rspec")
+      expect(warnings.first).to include("deprecated")
+    end
+
+    it "returns multiple warnings when present in both defaults and overrides" do
+      remote_config = {
+        "defaults" => { "update_external_dependencies" => false },
+        "overrides" => [{ "dependency" => "rspec", "update_external_dependencies" => true }],
+      }
+      warnings = PolicyManager.new(remote_config).deprecated_config_warnings
+      expect(warnings.length).to eq(2)
     end
   end
 
@@ -289,7 +254,6 @@ RSpec.describe PolicyManager do
         "api_version" => DependabotAutoMerge::VERSION,
         "defaults" => {
           "auto_merge" => true,
-          "update_external_dependencies" => true,
           "allowed_semver_bumps" => %i[patch minor],
         },
         "overrides" => [
@@ -297,11 +261,6 @@ RSpec.describe PolicyManager do
             # example of being stricter about semver for certain dependencies
             "dependency" => internal_dependency,
             "allowed_semver_bumps" => %i[patch],
-          },
-          {
-            # example of deny-listing a named external dependency
-            "dependency" => external_dependency,
-            "update_external_dependencies" => false,
           },
         ],
       }
@@ -325,7 +284,7 @@ RSpec.describe PolicyManager do
       ])
     end
 
-    it "should return reasons not to merge the example external dependency" do
+    it "should return reasons not to merge an external dependency" do
       mock_pr = instance_double("PullRequest")
       allow(mock_pr).to receive(:commit_message).and_return(
         <<~COMMIT_MESSAGE,
@@ -333,13 +292,13 @@ RSpec.describe PolicyManager do
           updated-dependencies:
           - dependency-name: #{external_dependency}
             dependency-type: direct:production
-            update-type: version-update:semver-minor
+            update-type: version-update:semver-patch
         COMMIT_MESSAGE
       )
 
       expect(PolicyManager.new(remote_config).is_auto_mergeable?(mock_pr)).to eq(false)
       expect(PolicyManager.new(remote_config).reasons_not_to_merge(mock_pr)).to eq([
-        "foo minor increase is not allowed by the derived policy for this dependency: {:auto_merge=>false, :allowed_semver_bumps=>[]}",
+        "foo patch increase is not allowed by the derived policy for this dependency: {:auto_merge=>false, :allowed_semver_bumps=>[]}",
       ])
     end
 

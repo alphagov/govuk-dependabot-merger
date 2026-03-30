@@ -13,24 +13,22 @@ For example:
 ```yaml
 api_version: 2
 defaults:
-  update_external_dependencies: false # default: false
   auto_merge: true # default: true
   allowed_semver_bumps: # allowed values: `[patch, minor, major]`
     - patch
     - minor
   # The above sets the default policy for all dependencies in your project.
-  # But each of the above properties can be overridden on a per-dependency basis below.
+  # Only internal (govuk-owned) dependencies are eligible for auto-merging.
+  # External dependencies are never auto-merged.
+  # Each of the above properties can be overridden on a per-dependency basis below.
 overrides:
   # Example of overriding `allowed_semver_bumps`:
-  - dependency: rails
+  - dependency: govuk_publishing_components
     allowed_semver_bumps:
-      - patch # minor/major bumps should be upgraded manually. See https://docs.publishing.service.gov.uk/manual/keeping-software-current.html#rails
+      - patch # minor/major bumps should be upgraded manually
   # Example of opting a specific dependency out of automatic patching:
   - dependency: gds-api-adapters
     auto_merge: false
-  # Example of opting a specific dependency into automatic patching:
-  - dependency: rspec
-    update_external_dependencies: true
 ```
 
 After you've merged your config file into your main branch, you just need to add your repository to the [config/repos_opted_in.yml](config/repos_opted_in.yml) list in govuk-dependabot-merger.
