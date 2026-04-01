@@ -9,7 +9,6 @@ class PolicyManager
   def defaults
     defaults = @remote_config["defaults"] || {}
     {
-      update_external_dependencies: defaults["update_external_dependencies"].nil? ? false : defaults["update_external_dependencies"],
       auto_merge: defaults["auto_merge"].nil? ? true : defaults["auto_merge"],
       allowed_semver_bumps: defaults["allowed_semver_bumps"].nil? ? %i[patch minor] : defaults["allowed_semver_bumps"],
     }
@@ -18,17 +17,34 @@ class PolicyManager
   def dependency_policy(dependency_name)
     dependency_overrides = @remote_config["overrides"]&.find { |dependency| dependency["dependency"] == dependency_name } || {}
 
-    update_external_dependencies = dependency_overrides["update_external_dependencies"].nil? ? defaults[:update_external_dependencies] : dependency_overrides["update_external_dependencies"]
     allowed_semver_bumps = dependency_overrides["allowed_semver_bumps"].nil? ? defaults[:allowed_semver_bumps] : dependency_overrides["allowed_semver_bumps"]
     auto_merge = dependency_overrides["auto_merge"].nil? ? defaults[:auto_merge] : dependency_overrides["auto_merge"]
 
     dependency = Dependency.new(dependency_name)
-    auto_merge = update_external_dependencies if auto_merge && !dependency.internal?
+    auto_merge = false if auto_merge && !dependency.internal?
 
     {
       auto_merge:,
       allowed_semver_bumps: auto_merge ? allowed_semver_bumps.map(&:to_sym) : [],
     }
+  end
+
+  def deprecated_config_warnings
+    warnings = []
+    defaults = @remote_config["defaults"] || {}
+    overrides = @remote_config["overrides"] || []
+
+    if defaults.key?("update_external_dependencies")
+      warnings << "the `update_external_dependencies` setting in `defaults` is deprecated and will be ignored. External dependencies are no longer auto-merged."
+    end
+
+    overrides.each do |override|
+      if override.key?("update_external_dependencies")
+        warnings << "the `update_external_dependencies` setting for `#{override['dependency']}` is deprecated and will be ignored. External dependencies are no longer auto-merged."
+      end
+    end
+
+    warnings
   end
 
   def remote_config_exists?
