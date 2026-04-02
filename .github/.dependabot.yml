@@ -1,0 +1,33 @@
+version: 2
+
+updates:
+  - package-ecosystem: bundler
+    directory: /
+    schedule:
+      interval: monthly
+      time: "10:30"
+      timezone: "Europe/London"
+    cooldown:
+      default-days: 3
+    open-pull-requests-limit: 10
+    allow:
+      - dependency-type: direct
+    groups:
+      test:
+        patterns:
+          - "rspec"
+          - "rspec-*"
+          - "webmock"
+      lint:
+        patterns:
+          - "rubocop"
+          - "rubocop-*"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+      time: "10:30"
+      timezone: "Europe/London"
+    cooldown:
+      default-days: 3
