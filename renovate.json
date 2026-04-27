@@ -1,0 +1,4 @@
+{
+  "enabledManagers": ["ruby-version"],
+  "minimumReleaseAge": "10 days"
+}
