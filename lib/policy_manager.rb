@@ -9,7 +9,7 @@ class PolicyManager
   def defaults
     defaults = @remote_config["defaults"] || {}
     {
-      auto_merge: defaults["auto_merge"].nil? ? true : defaults["auto_merge"],
+      auto_merge: defaults["auto_merge"].nil? || defaults["auto_merge"],
       allowed_semver_bumps: defaults["allowed_semver_bumps"].nil? ? %i[patch minor] : defaults["allowed_semver_bumps"],
     }
   end
