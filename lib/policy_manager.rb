@@ -40,12 +40,12 @@ class PolicyManager
     overrides = @remote_config["overrides"] || []
 
     if defaults_config["update_external_dependencies"] && @cooldown_days < 3
-      warnings << "external dependencies are configured for auto-merging (`update_external_dependencies: true` in defaults), but the Dependabot cooldown is insufficient (#{@cooldown_days} days). A minimum of 3 days is required."
+      warnings << "external dependencies are configured for auto-merging (`update_external_dependencies: true` in defaults), but the Dependabot cooldown is insufficient (#{@cooldown_days} #{@cooldown_days == 1 ? 'day' : 'days'}). A minimum of 3 days is required."
     end
 
     overrides.each do |override|
       if override["update_external_dependencies"] && @cooldown_days < 3
-        warnings << "external dependencies for `#{override['dependency']}` are configured for auto-merging, but the Dependabot cooldown is insufficient (#{@cooldown_days} days). A minimum of 3 days is required."
+        warnings << "external dependencies for `#{override['dependency']}` are configured for auto-merging, but the Dependabot cooldown is insufficient (#{@cooldown_days} #{@cooldown_days == 1 ? 'day' : 'days'}). A minimum of 3 days is required."
       end
     end
 

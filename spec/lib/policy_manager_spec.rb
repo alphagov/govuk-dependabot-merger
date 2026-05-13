@@ -279,7 +279,7 @@ RSpec.describe PolicyManager do
       warnings = PolicyManager.new(remote_config, cooldown_days: 1).cooldown_warnings
       expect(warnings.length).to eq(1)
       expect(warnings.first).to include("rspec")
-      expect(warnings.first).to include("1 days")
+      expect(warnings.first).to include("1 day")
     end
 
     it "returns no warning when update_external_dependencies is true in an override and cooldown >= 3" do
