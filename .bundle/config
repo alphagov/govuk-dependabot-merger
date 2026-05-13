@@ -1,0 +1,3 @@
+---
+BUNDLE_WITHOUT: "rubocop"
+BUNDLE_PATH: "/tmp/bundle_gems"
