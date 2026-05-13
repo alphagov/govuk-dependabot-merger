@@ -12,7 +12,7 @@ RSpec.describe AutoMerger do
     allow(mock_policy_manager).to receive(:valid_remote_config_syntax?).and_return(true)
     allow(mock_policy_manager).to receive(:remote_config_api_version_supported?).and_return(true)
     allow(mock_policy_manager).to receive(:is_auto_mergeable?).and_return(true)
-    allow(mock_policy_manager).to receive(:deprecated_config_warnings).and_return([])
+    allow(mock_policy_manager).to receive(:cooldown_warnings).and_return([])
     allow(PolicyManager).to receive(:new).and_return(mock_policy_manager)
     mock_policy_manager
   end
@@ -51,8 +51,8 @@ RSpec.describe AutoMerger do
       mock_pr_1 = instance_double("PullRequest", number: 1)
       mock_pr_2 = instance_double("PullRequest", number: 2)
       mock_pr_3 = instance_double("PullRequest", number: 3)
-      mock_repo_1 = instance_double("Repo", name: "Repo 1", govuk_dependabot_merger_config: {}, dependabot_pull_requests: [mock_pr_1])
-      mock_repo_2 = instance_double("Repo", name: "Repo 2", govuk_dependabot_merger_config: {}, dependabot_pull_requests: [mock_pr_2, mock_pr_3])
+      mock_repo_1 = instance_double("Repo", name: "Repo 1", govuk_dependabot_merger_config: {}, dependabot_cooldown_days: 0, dependabot_pull_requests: [mock_pr_1])
+      mock_repo_2 = instance_double("Repo", name: "Repo 2", govuk_dependabot_merger_config: {}, dependabot_cooldown_days: 0, dependabot_pull_requests: [mock_pr_2, mock_pr_3])
       allow(Repo).to receive(:all).and_return([
         mock_repo_1,
         mock_repo_2,
@@ -67,7 +67,7 @@ RSpec.describe AutoMerger do
 
     it "forwards the `dry_run` keyword arg if passed" do
       mock_pr = instance_double("PullRequest", number: 1)
-      mock_repo = instance_double("Repo", name: "Repo", govuk_dependabot_merger_config: {}, dependabot_pull_requests: [mock_pr])
+      mock_repo = instance_double("Repo", name: "Repo", govuk_dependabot_merger_config: {}, dependabot_cooldown_days: 0, dependabot_pull_requests: [mock_pr])
       allow(Repo).to receive(:all).and_return([mock_repo])
 
       expect(AutoMerger).to receive(:merge_dependabot_pr).with(mock_pr, policy_manager, dry_run: true)
@@ -76,7 +76,7 @@ RSpec.describe AutoMerger do
     end
 
     it "should make a call to PolicyManager.remote_config_exists?, which should block merge if false" do
-      mock_repo = instance_double("Repo", name: "Repo 1", govuk_dependabot_merger_config: {}, dependabot_pull_requests: [mock_pr])
+      mock_repo = instance_double("Repo", name: "Repo 1", govuk_dependabot_merger_config: {}, dependabot_cooldown_days: 0, dependabot_pull_requests: [mock_pr])
       allow(Repo).to receive(:all).and_return([mock_repo])
 
       allow(policy_manager).to receive(:remote_config_exists?).and_return(false)
@@ -87,7 +87,7 @@ RSpec.describe AutoMerger do
     end
 
     it "should make a call to PolicyManager.valid_remote_config_syntax?, which should block merge if false" do
-      mock_repo = instance_double("Repo", name: "Repo 1", govuk_dependabot_merger_config: {}, dependabot_pull_requests: [mock_pr])
+      mock_repo = instance_double("Repo", name: "Repo 1", govuk_dependabot_merger_config: {}, dependabot_cooldown_days: 0, dependabot_pull_requests: [mock_pr])
       allow(Repo).to receive(:all).and_return([mock_repo])
 
       allow(policy_manager).to receive(:valid_remote_config_syntax?).and_return(false)
@@ -98,7 +98,7 @@ RSpec.describe AutoMerger do
     end
 
     it "should make a call to PolicyManager.remote_config_api_version_supported?, which should block merge if false" do
-      mock_repo = instance_double("Repo", name: "Repo 1", govuk_dependabot_merger_config: {}, dependabot_pull_requests: [mock_pr])
+      mock_repo = instance_double("Repo", name: "Repo 1", govuk_dependabot_merger_config: {}, dependabot_cooldown_days: 0, dependabot_pull_requests: [mock_pr])
       allow(Repo).to receive(:all).and_return([mock_repo])
 
       allow(policy_manager).to receive(:remote_config_api_version_supported?).and_return(false)
@@ -110,7 +110,7 @@ RSpec.describe AutoMerger do
 
     it "should announce when no Dependabot PRs were found" do
       policy_manager # set up the mock policy manager object
-      mock_repo = instance_double("Repo", name: "Repo 1", govuk_dependabot_merger_config: {}, dependabot_pull_requests: [])
+      mock_repo = instance_double("Repo", name: "Repo 1", govuk_dependabot_merger_config: {}, dependabot_cooldown_days: 0, dependabot_pull_requests: [])
       allow(Repo).to receive(:all).and_return([mock_repo])
 
       expect(AutoMerger).to_not receive(:merge_dependabot_pr)
@@ -165,7 +165,7 @@ RSpec.describe AutoMerger do
   describe ".analyse_dependabot_pr" do
     it "uses `merge_dependabot_pr` under the hood" do
       mock_pr = instance_double("PullRequest")
-      mock_repo = instance_double("Repo", dependabot_pull_request: mock_pr, govuk_dependabot_merger_config: {})
+      mock_repo = instance_double("Repo", dependabot_pull_request: mock_pr, govuk_dependabot_merger_config: {}, dependabot_cooldown_days: 0)
       mock_policy_manager = {}
       allow(Repo).to receive(:new).with("foo").and_return(mock_repo)
       allow(PolicyManager).to receive(:new).and_return(mock_policy_manager)

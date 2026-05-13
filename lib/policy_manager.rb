@@ -2,8 +2,9 @@ require_relative "./change_set"
 require_relative "./version"
 
 class PolicyManager
-  def initialize(remote_config = {})
+  def initialize(remote_config = {}, cooldown_days: 0)
     @remote_config = remote_config
+    @cooldown_days = cooldown_days
   end
 
   def defaults
@@ -11,6 +12,7 @@ class PolicyManager
     {
       auto_merge: defaults["auto_merge"].nil? || defaults["auto_merge"],
       allowed_semver_bumps: defaults["allowed_semver_bumps"].nil? ? %i[patch minor] : defaults["allowed_semver_bumps"],
+      update_external_dependencies: defaults["update_external_dependencies"].nil? ? false : defaults["update_external_dependencies"],
     }
   end
 
@@ -19,9 +21,12 @@ class PolicyManager
 
     allowed_semver_bumps = dependency_overrides["allowed_semver_bumps"].nil? ? defaults[:allowed_semver_bumps] : dependency_overrides["allowed_semver_bumps"]
     auto_merge = dependency_overrides["auto_merge"].nil? ? defaults[:auto_merge] : dependency_overrides["auto_merge"]
+    update_external_dependencies = dependency_overrides["update_external_dependencies"].nil? ? defaults[:update_external_dependencies] : dependency_overrides["update_external_dependencies"]
 
     dependency = Dependency.new(dependency_name)
-    auto_merge = false if auto_merge && !dependency.internal?
+    if auto_merge && !dependency.internal?
+      auto_merge = update_external_dependencies && @cooldown_days >= 3
+    end
 
     {
       auto_merge:,
@@ -29,18 +34,18 @@ class PolicyManager
     }
   end
 
-  def deprecated_config_warnings
+  def cooldown_warnings
     warnings = []
-    defaults = @remote_config["defaults"] || {}
+    defaults_config = @remote_config["defaults"] || {}
     overrides = @remote_config["overrides"] || []
 
-    if defaults.key?("update_external_dependencies")
-      warnings << "the `update_external_dependencies` setting in `defaults` is deprecated and will be ignored. External dependencies are no longer auto-merged."
+    if defaults_config["update_external_dependencies"] && @cooldown_days < 3
+      warnings << "external dependencies are configured for auto-merging (`update_external_dependencies: true` in defaults), but the Dependabot cooldown is insufficient (#{@cooldown_days} days). A minimum of 3 days is required."
     end
 
     overrides.each do |override|
-      if override.key?("update_external_dependencies")
-        warnings << "the `update_external_dependencies` setting for `#{override['dependency']}` is deprecated and will be ignored. External dependencies are no longer auto-merged."
+      if override["update_external_dependencies"] && @cooldown_days < 3
+        warnings << "external dependencies for `#{override['dependency']}` are configured for auto-merging, but the Dependabot cooldown is insufficient (#{@cooldown_days} days). A minimum of 3 days is required."
       end
     end
 
