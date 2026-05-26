@@ -34,4 +34,28 @@ Repo = Struct.new(:name) do
   def dependabot_pull_request(pr_number)
     PullRequest.new(GitHubClient.instance.pull_request("alphagov/#{name}", pr_number))
   end
+
+  def dependabot_cooldown_days
+    GitHubClient.instance
+      .contents(
+        "alphagov/#{name}",
+        {
+          accept: "application/vnd.github.raw",
+          path: ".github/dependabot.yml",
+        },
+      )
+      .then { |content|
+        cfg = YAML.safe_load(content)
+
+        return 0 if !cfg.has_key?("updates") || cfg["updates"].length == 0
+
+        return cfg["updates"].map { |update|
+          update.dig("cooldown", "default-days") || 0
+        }.min
+      }
+  rescue Octokit::NotFound
+    { "error" => "404" }
+  rescue Psych::SyntaxError
+    { "error" => "syntax" }
+  end
 end

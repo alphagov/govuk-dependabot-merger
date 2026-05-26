@@ -5,11 +5,97 @@ RSpec.describe Repo do
 
   let(:repo_name) { "foo" }
   let(:external_config_file_api_url) { "https://api.github.com/repos/alphagov/#{repo_name}/contents/.govuk_dependabot_merger.yml" }
+  let(:external_dependabot_config_file_api_url) { "https://api.github.com/repos/alphagov/#{repo_name}/contents/.github/dependabot.yml" }
   let(:arbitrary_config) do
     <<~EXTERNAL_CONFIG_YAML
       foo: bar
     EXTERNAL_CONFIG_YAML
   end
+  let(:dependabot_config_with_all_cooldown_days_config) do
+    <<~DEPENDABOT_CONFIG
+      ---
+      version: 2
+      
+      updates:
+        - package-ecosystem: bundler
+          directory: /
+          schedule:
+            interval: monthly
+            time: "10:30"
+            timezone: "Europe/London"
+          cooldown:
+            default-days: 6
+          open-pull-requests-limit: 10
+          allow:
+            - dependency-type: direct
+          groups:
+            test:
+              patterns:
+                - "rspec"
+                - "rspec-*"
+                - "webmock"
+            lint:
+              patterns:
+                - "rubocop"
+                - "rubocop-*"
+      
+        - package-ecosystem: github-actions
+          directory: /
+          schedule:
+            interval: monthly
+            time: "10:30"
+            timezone: "Europe/London"
+          cooldown:
+            default-days: 3      
+    DEPENDABOT_CONFIG
+  end
+
+  let(:dependabot_config_with_missing_cooldown_days_config) do
+    <<~DEPENDABOT_CONFIG
+      ---
+      version: 2
+      
+      updates:
+        - package-ecosystem: bundler
+          directory: /
+          schedule:
+            interval: monthly
+            time: "10:30"
+            timezone: "Europe/London"
+          cooldown:
+            default-days: 1
+          open-pull-requests-limit: 10
+          allow:
+            - dependency-type: direct
+          groups:
+            test:
+              patterns:
+                - "rspec"
+                - "rspec-*"
+                - "webmock"
+            lint:
+              patterns:
+                - "rubocop"
+                - "rubocop-*"
+      
+        - package-ecosystem: github-actions
+          directory: /
+          schedule:
+            interval: monthly
+            time: "10:30"
+            timezone: "Europe/London"      
+    DEPENDABOT_CONFIG
+  end
+
+  let(:dependabot_config_with_no_updates) do
+    <<~DEPENDABOT_CONFIG
+      ---
+      version: 2
+      
+      updates: []      
+    DEPENDABOT_CONFIG
+  end
+
 
   describe ".all" do
     it "should return an array of Repo objects" do
@@ -80,6 +166,36 @@ RSpec.describe Repo do
       repo = Repo.new(repo_name)
       expect(repo.dependabot_pull_requests).to all be_a_kind_of(PullRequest)
       expect(repo.dependabot_pull_requests.count).to eq(1)
+    end
+  end
+
+  describe "#dependabot_cooldown_days" do
+    it "returns the smallest configured dependency cooldown in days" do
+      stub_request(:get, external_dependabot_config_file_api_url)
+        .to_return(status: 200, body: dependabot_config_with_all_cooldown_days_config.to_json, headers: { "Content-Type": "application/json" })
+
+      repo = Repo.new(repo_name)
+      expect(repo.dependabot_cooldown_days).to eq(3)
+    end
+
+    context "when an update configuration is missing a cooldown days setting" do
+      it "returns zero as the dependency cooldown in days" do
+        stub_request(:get, external_dependabot_config_file_api_url)
+          .to_return(status: 200, body: dependabot_config_with_missing_cooldown_days_config.to_json, headers: { "Content-Type": "application/json" })
+
+        repo = Repo.new(repo_name)
+        expect(repo.dependabot_cooldown_days).to eq(0)
+      end
+    end
+
+    context "when the dependabot configuration has no updates configured" do
+      it "returns zero as the dependency cooldown in days" do
+        stub_request(:get, external_dependabot_config_file_api_url)
+          .to_return(status: 200, body: dependabot_config_with_no_updates.to_json, headers: { "Content-Type": "application/json" })
+
+        repo = Repo.new(repo_name)
+        expect(repo.dependabot_cooldown_days).to eq(0)
+      end
     end
   end
 end
