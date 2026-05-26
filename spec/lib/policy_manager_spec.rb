@@ -333,7 +333,7 @@ RSpec.describe PolicyManager do
           updated-dependencies:
           - dependency-name: #{external_dependency}
             dependency-type: direct:production
-            update-type: version-update:semver-minor
+            update-type: version-update:semver-patch
         COMMIT_MESSAGE
       )
 
