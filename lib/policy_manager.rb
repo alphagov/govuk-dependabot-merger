@@ -2,8 +2,9 @@ require_relative "./change_set"
 require_relative "./version"
 
 class PolicyManager
-  def initialize(remote_config = {})
+  def initialize(remote_config = {}, dependabot_cooldown_days = 0)
     @remote_config = remote_config
+    @dependabot_cooldown_days = dependabot_cooldown_days
   end
 
   def defaults
@@ -20,15 +21,37 @@ class PolicyManager
 
     update_external_dependencies = dependency_overrides["update_external_dependencies"].nil? ? defaults[:update_external_dependencies] : dependency_overrides["update_external_dependencies"]
     allowed_semver_bumps = dependency_overrides["allowed_semver_bumps"].nil? ? defaults[:allowed_semver_bumps] : dependency_overrides["allowed_semver_bumps"]
-    auto_merge = dependency_overrides["auto_merge"].nil? ? defaults[:auto_merge] : dependency_overrides["auto_merge"]
+    auto_merge_setting = dependency_overrides.fetch("auto_merge", defaults[:auto_merge])
 
     dependency = Dependency.new(dependency_name)
-    auto_merge = update_external_dependencies if auto_merge && !dependency.internal?
 
+    auto_merge = if dependency.internal?
+                   auto_merge_internal?(auto_merge_setting)
+                 else
+                   auto_merge_external?(dependency_name, auto_merge_setting, update_external_dependencies)
+                 end
     {
       auto_merge:,
       allowed_semver_bumps: auto_merge ? allowed_semver_bumps.map(&:to_sym) : [],
     }
+  end
+
+  def auto_merge_internal?(setting)
+    # the setting is respected at all times for internal dependencies
+    setting
+  end
+
+  def auto_merge_external?(dependency_name, auto_merge_setting, update_external_dependencies)
+    unless update_external_dependencies
+      false
+    else
+      if auto_merge_setting && !dependabot_cooldown_days_acceptable?
+        puts "blocking auto merging of #{dependency_name} because the configured dependabot cooldown is too low (#{@dependabot_cooldown_days})"
+        false
+      else
+        auto_merge_setting
+      end
+    end
   end
 
   def remote_config_exists?
@@ -45,6 +68,10 @@ class PolicyManager
 
   def is_auto_mergeable?(pull_request)
     reasons_not_to_merge(pull_request).count.zero?
+  end
+
+  def dependabot_cooldown_days_acceptable?
+    @dependabot_cooldown_days >= 3
   end
 
   def reasons_not_to_merge(pull_request)

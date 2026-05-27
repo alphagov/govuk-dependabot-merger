@@ -2,7 +2,11 @@
 
 This repository runs a daily GitHub action that automatically approves and merges certain Dependabot PRs for opted-in GOV.UK repos, according to [strict criteria set out in RFC-167](https://github.com/alphagov/govuk-rfcs/blob/main/rfc-167-auto-patch-dependencies.md#conditions-required-for-automatic-patching).
 
-Note that govuk-dependabot-merger will avoid merging a PR if it has a failing GitHub Action CI workflow called `CI`, [as per convention](https://docs.publishing.service.gov.uk/manual/test-and-build-a-project-with-github-actions.html#branch-protection-rules). It will also avoid running altogether on weekends and bank holidays.
+Note that govuk-dependabot-merger will avoid merging a PR if 
+* it has a failing GitHub Action CI workflow called `CI`, [as per convention](https://docs.publishing.service.gov.uk/manual/test-and-build-a-project-with-github-actions.html#branch-protection-rules), or
+* the smallest configured [Dependabot cooldown](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#cooldown-) period is less than 3 days; if unconfigured, the cooldown period is treated as 0 days.  
+
+It will also avoid running altogether on weekends and bank holidays.
 
 ## Usage
 

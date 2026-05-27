@@ -44,7 +44,7 @@ RSpec.describe PolicyManager do
       let(:expected_policy) { { auto_merge: true, allowed_semver_bumps: } }
       it { expect(policy_manager.dependency_policy(external_dependency)).to eq(expected_policy) }
     end
-    let(:policy_manager) { PolicyManager.new(remote_config) }
+    let(:policy_manager) { PolicyManager.new(remote_config, 5) }
     let(:remote_config) do
       {
         "defaults" => {
@@ -88,6 +88,30 @@ RSpec.describe PolicyManager do
 
       it_behaves_like "allows auto-merging internal dependencies"
       it_behaves_like "allows auto-merging external dependencies"
+    end
+
+    context "dependabot cooldown days is less than 3" do
+      let(:policy_manager) { PolicyManager.new(remote_config, 1) }
+
+      context "auto merge enabled, external dependencies enabled" do
+        let(:auto_merge) { true }
+        let(:update_external_dependencies) { true }
+
+        it_behaves_like "allows auto-merging internal dependencies"
+        it_behaves_like "doesn't allow auto-merging external dependencies"
+      end
+    end
+
+    context "dependabot cooldown days is >= 3 days" do
+      let(:policy_manager) { PolicyManager.new(remote_config, 5) }
+
+      context "auto merge enabled, external dependencies enabled" do
+        let(:auto_merge) { true }
+        let(:update_external_dependencies) { true }
+
+        it_behaves_like "allows auto-merging internal dependencies"
+        it_behaves_like "allows auto-merging external dependencies"
+      end
     end
 
     context "general tests for overrides" do

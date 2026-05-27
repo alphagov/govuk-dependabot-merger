@@ -22,7 +22,7 @@ module AutoMerger
 
   def self.merge_dependabot_prs(dry_run: false)
     Repo.all.each do |repo|
-      policy_manager = PolicyManager.new(repo.govuk_dependabot_merger_config)
+      policy_manager = PolicyManager.new(repo.govuk_dependabot_merger_config, repo.dependabot_cooldown_days)
 
       if !policy_manager.remote_config_exists?
         puts "#{repo.name}: the remote .govuk_dependabot_merger.yml file is missing."
