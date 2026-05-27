@@ -22,7 +22,7 @@ module AutoMerger
 
   def self.merge_dependabot_prs(dry_run: false)
     Repo.all.each do |repo|
-      policy_manager = PolicyManager.new(repo.govuk_dependabot_merger_config)
+      policy_manager = PolicyManager.new(repo.govuk_dependabot_merger_config, cooldown_days: repo.dependabot_cooldown_days)
 
       if !policy_manager.remote_config_exists?
         puts "#{repo.name}: the remote .govuk_dependabot_merger.yml file is missing."
@@ -31,7 +31,7 @@ module AutoMerger
       elsif !policy_manager.remote_config_api_version_supported?
         puts "#{repo.name}: the remote .govuk_dependabot_merger.yml file is using an unsupported API version."
       else
-        policy_manager.deprecated_config_warnings.each do |warning|
+        policy_manager.cooldown_warnings.each do |warning|
           puts "#{repo.name}: WARNING - #{warning}"
         end
 
@@ -70,7 +70,7 @@ module AutoMerger
     _, repo_name, pr_number = url.match(/alphagov\/(.+)\/pull\/(.+)$/).to_a
     repo = Repo.new(repo_name)
     pr = repo.dependabot_pull_request(pr_number)
-    policy_manager = PolicyManager.new(repo.govuk_dependabot_merger_config)
+    policy_manager = PolicyManager.new(repo.govuk_dependabot_merger_config, cooldown_days: repo.dependabot_cooldown_days)
     merge_dependabot_pr(pr, policy_manager, dry_run: true)
   end
 end

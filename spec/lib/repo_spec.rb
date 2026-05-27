@@ -82,6 +82,72 @@ RSpec.describe Repo do
       expect(repo.dependabot_pull_requests.count).to eq(1)
     end
   end
+
+  describe "#dependabot_cooldown_days" do
+    let(:dependabot_config_api_url) { "https://api.github.com/repos/alphagov/#{repo_name}/contents/.github/dependabot.yml" }
+
+    it "returns the minimum default-days across all updates entries that have a cooldown" do
+      config = <<~YAML
+        version: 2
+        updates:
+          - package-ecosystem: bundler
+            cooldown:
+              default-days: 5
+          - package-ecosystem: npm
+            cooldown:
+              default-days: 3
+      YAML
+      stub_request(:get, dependabot_config_api_url)
+        .to_return(status: 200, body: config, headers: { "Content-Type": "application/vnd.github.raw" })
+
+      expect(Repo.new(repo_name).dependabot_cooldown_days).to eq(3)
+    end
+
+    it "returns the cooldown days when only one updates entry has a cooldown" do
+      config = <<~YAML
+        version: 2
+        updates:
+          - package-ecosystem: bundler
+            cooldown:
+              default-days: 4
+          - package-ecosystem: npm
+      YAML
+      stub_request(:get, dependabot_config_api_url)
+        .to_return(status: 200, body: config, headers: { "Content-Type": "application/vnd.github.raw" })
+
+      expect(Repo.new(repo_name).dependabot_cooldown_days).to eq(4)
+    end
+
+    it "returns 0 when no updates entries have a cooldown" do
+      config = <<~YAML
+        version: 2
+        updates:
+          - package-ecosystem: bundler
+      YAML
+      stub_request(:get, dependabot_config_api_url)
+        .to_return(status: 200, body: config, headers: { "Content-Type": "application/vnd.github.raw" })
+
+      expect(Repo.new(repo_name).dependabot_cooldown_days).to eq(0)
+    end
+
+    it "returns 0 when the dependabot.yml file is missing" do
+      stub_request(:get, dependabot_config_api_url).to_return(status: 404)
+
+      expect(Repo.new(repo_name).dependabot_cooldown_days).to eq(0)
+    end
+
+    it "returns 0 when the dependabot.yml YAML is malformed" do
+      config = <<~YAML
+        foo:
+          - baz
+        - bam
+      YAML
+      stub_request(:get, dependabot_config_api_url)
+        .to_return(status: 200, body: config, headers: { "Content-Type": "application/vnd.github.raw" })
+
+      expect(Repo.new(repo_name).dependabot_cooldown_days).to eq(0)
+    end
+  end
 end
 
 def pull_request_api_response(overrides = {})

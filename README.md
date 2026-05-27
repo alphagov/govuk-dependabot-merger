@@ -17,9 +17,9 @@ defaults:
   allowed_semver_bumps: # allowed values: `[patch, minor, major]`
     - patch
     - minor
+  update_external_dependencies: false # default: false. See note below.
   # The above sets the default policy for all dependencies in your project.
-  # Only internal (govuk-owned) dependencies are eligible for auto-merging.
-  # External dependencies are never auto-merged.
+  # Only internal (govuk-owned) dependencies are eligible for auto-merging by default.
   # Each of the above properties can be overridden on a per-dependency basis below.
 overrides:
   # Example of overriding `allowed_semver_bumps`:
@@ -29,7 +29,29 @@ overrides:
   # Example of opting a specific dependency out of automatic patching:
   - dependency: gds-api-adapters
     auto_merge: false
+  # Example of opting an external dependency into auto-merging (requires cooldown, see below):
+  - dependency: rails
+    update_external_dependencies: true
 ```
+
+> **External dependencies and the cooldown requirement**
+>
+> To enable auto-merging of external (non-govuk-owned) dependencies, set `update_external_dependencies: true` either in `defaults` (to apply to all external deps) or in a specific `overrides` entry. This is disabled by default.
+>
+> **Important:** this setting only takes effect if your repository's `.github/dependabot.yml` has a `cooldown` block with `default-days >= 3` in at least one `updates` entry. If the cooldown is insufficient or missing, external dependencies will not be auto-merged and a warning will be logged. This ensures that any external dependency PR has been available on the registry for at least 3 days before Dependabot raises it, providing time for the community to flag malicious or broken releases.
+>
+> Example `.github/dependabot.yml` with the required cooldown:
+>
+> ```yaml
+> version: 2
+> updates:
+>   - package-ecosystem: bundler
+>     directory: "/"
+>     schedule:
+>       interval: daily
+>     cooldown:
+>       default-days: 3
+> ```
 
 After you've merged your config file into your main branch, you just need to add your repository to the [config/repos_opted_in.yml](config/repos_opted_in.yml) list in govuk-dependabot-merger.
 
