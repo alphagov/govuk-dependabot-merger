@@ -2,7 +2,11 @@
 
 This repository runs a daily GitHub action that automatically approves and merges certain Dependabot PRs for opted-in GOV.UK repos, according to [strict criteria set out in RFC-167](https://github.com/alphagov/govuk-rfcs/blob/main/rfc-167-auto-patch-dependencies.md#conditions-required-for-automatic-patching).
 
-Note that govuk-dependabot-merger will avoid merging a PR if it has a failing GitHub Action CI workflow called `CI`, [as per convention](https://docs.publishing.service.gov.uk/manual/test-and-build-a-project-with-github-actions.html#branch-protection-rules). It will also avoid running altogether on weekends and bank holidays.
+Note that govuk-dependabot-merger will avoid merging a PR if 
+* it has a failing GitHub Action CI workflow called `CI`, [as per convention](https://docs.publishing.service.gov.uk/manual/test-and-build-a-project-with-github-actions.html#branch-protection-rules), or
+* the smallest configured [Dependabot cooldown](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#cooldown-) period is less than 3 days; if unconfigured, the cooldown period is treated as 0 days.  
+
+It will also avoid running altogether on weekends and bank holidays.
 
 ## Usage
 
@@ -13,22 +17,24 @@ For example:
 ```yaml
 api_version: 2
 defaults:
+  update_external_dependencies: false # default: false
   auto_merge: true # default: true
   allowed_semver_bumps: # allowed values: `[patch, minor, major]`
     - patch
     - minor
   # The above sets the default policy for all dependencies in your project.
-  # Only internal (govuk-owned) dependencies are eligible for auto-merging.
-  # External dependencies are never auto-merged.
-  # Each of the above properties can be overridden on a per-dependency basis below.
+  # But each of the above properties can be overridden on a per-dependency basis below.
 overrides:
   # Example of overriding `allowed_semver_bumps`:
-  - dependency: govuk_publishing_components
+  - dependency: rails
     allowed_semver_bumps:
-      - patch # minor/major bumps should be upgraded manually
+      - patch # minor/major bumps should be upgraded manually. See https://docs.publishing.service.gov.uk/manual/keeping-software-current.html#rails
   # Example of opting a specific dependency out of automatic patching:
   - dependency: gds-api-adapters
     auto_merge: false
+  # Example of opting a specific dependency into automatic patching:
+  - dependency: rspec
+    update_external_dependencies: true
 ```
 
 After you've merged your config file into your main branch, you just need to add your repository to the [config/repos_opted_in.yml](config/repos_opted_in.yml) list in govuk-dependabot-merger.
