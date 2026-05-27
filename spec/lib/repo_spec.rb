@@ -15,7 +15,7 @@ RSpec.describe Repo do
     <<~DEPENDABOT_CONFIG
       ---
       version: 2
-      
+
       updates:
         - package-ecosystem: bundler
           directory: /
@@ -38,7 +38,7 @@ RSpec.describe Repo do
               patterns:
                 - "rubocop"
                 - "rubocop-*"
-      
+
         - package-ecosystem: github-actions
           directory: /
           schedule:
@@ -46,7 +46,7 @@ RSpec.describe Repo do
             time: "10:30"
             timezone: "Europe/London"
           cooldown:
-            default-days: 3      
+            default-days: 3#{'      '}
     DEPENDABOT_CONFIG
   end
 
@@ -54,7 +54,7 @@ RSpec.describe Repo do
     <<~DEPENDABOT_CONFIG
       ---
       version: 2
-      
+
       updates:
         - package-ecosystem: bundler
           directory: /
@@ -77,13 +77,13 @@ RSpec.describe Repo do
               patterns:
                 - "rubocop"
                 - "rubocop-*"
-      
+
         - package-ecosystem: github-actions
           directory: /
           schedule:
             interval: monthly
             time: "10:30"
-            timezone: "Europe/London"      
+            timezone: "Europe/London"#{'      '}
     DEPENDABOT_CONFIG
   end
 
@@ -91,11 +91,10 @@ RSpec.describe Repo do
     <<~DEPENDABOT_CONFIG
       ---
       version: 2
-      
-      updates: []      
+
+      updates: []#{'      '}
     DEPENDABOT_CONFIG
   end
-
 
   describe ".all" do
     it "should return an array of Repo objects" do

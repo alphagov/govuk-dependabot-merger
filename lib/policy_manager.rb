@@ -11,7 +11,7 @@ class PolicyManager
     defaults = @remote_config["defaults"] || {}
     {
       update_external_dependencies: defaults["update_external_dependencies"].nil? ? false : defaults["update_external_dependencies"],
-      auto_merge: defaults["auto_merge"].nil? ? true : defaults["auto_merge"],
+      auto_merge: defaults["auto_merge"].nil? || defaults["auto_merge"],
       allowed_semver_bumps: defaults["allowed_semver_bumps"].nil? ? %i[patch minor] : defaults["allowed_semver_bumps"],
     }
   end
@@ -42,15 +42,15 @@ class PolicyManager
   end
 
   def auto_merge_external?(dependency_name, auto_merge_setting, update_external_dependencies)
-    unless update_external_dependencies
-      false
-    else
+    if update_external_dependencies
       if auto_merge_setting && !dependabot_cooldown_days_acceptable?
         puts "blocking auto merging of #{dependency_name} because the configured dependabot cooldown is too low (#{@dependabot_cooldown_days})"
         false
       else
         auto_merge_setting
       end
+    else
+      false
     end
   end
 

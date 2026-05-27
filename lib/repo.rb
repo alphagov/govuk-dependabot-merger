@@ -44,15 +44,15 @@ Repo = Struct.new(:name) do
           path: ".github/dependabot.yml",
         },
       )
-      .then { |content|
+      .then do |content|
         cfg = YAML.safe_load(content)
 
-        return 0 if !cfg.has_key?("updates") || cfg["updates"].length == 0
+        return 0 if !cfg.key?("updates") || cfg["updates"].empty?
 
         return cfg["updates"].map { |update|
           update.dig("cooldown", "default-days") || 0
         }.min
-      }
+      end
   rescue Octokit::NotFound
     { "error" => "404" }
   rescue Psych::SyntaxError
