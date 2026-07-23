@@ -249,6 +249,26 @@ RSpec.describe PullRequest do
       expect(pr.validate_files_changed).to eq(true)
     end
 
+    it "returns true if PR changes a GitHub Actions workflow YML file" do
+      gha_workflow = head_commit_api_response[:files].first.dup
+      gha_workflow[:filename] = ".github/workflows/ci.yml"
+      head_commit_api_response[:files] << gha_workflow
+      stub_remote_commit(head_commit_api_response)
+
+      pr = PullRequest.new(pull_request_api_response)
+      expect(pr.validate_files_changed).to eq(true)
+    end
+
+    it "returns true if PR changes a GitHub Actions workflow YAML file" do
+      gha_workflow = head_commit_api_response[:files].first.dup
+      gha_workflow[:filename] = ".github/workflows/ci.yaml"
+      head_commit_api_response[:files] << gha_workflow
+      stub_remote_commit(head_commit_api_response)
+
+      pr = PullRequest.new(pull_request_api_response)
+      expect(pr.validate_files_changed).to eq(true)
+    end
+
     it "returns false if PR changes anything else other than the allowed files" do
       pkg_json = head_commit_api_response[:files].first.dup
       pkg_json[:filename] = "package.json"

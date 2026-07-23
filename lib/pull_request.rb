@@ -40,8 +40,23 @@ class PullRequest
   def validate_files_changed
     commit = GitHubClient.instance.commit("alphagov/#{@api_response.base.repo.name}", @api_response.head.sha)
     files_changed = commit.files.map(&:filename)
-    allowed_files = ["yarn.lock", "package.json", "Gemfile.lock", "Gemfile", "#{@api_response.base.repo.name}.gemspec", "go.mod", "go.sum"]
-    (files_changed - allowed_files).empty?
+    allowed_file_patterns = [
+      "yarn.lock",
+      "package.json",
+      "Gemfile.lock",
+      "Gemfile",
+      "#{@api_response.base.repo.name}.gemspec",
+      "go.mod",
+      "go.sum",
+      ".github/workflows/*.yml",
+      ".github/workflows/*.yaml",
+    ]
+    compiled_pattern = "{#{allowed_file_patterns.join(',')}}"
+
+    # return false if any changed file hasn't matched any of the patterns
+    files_changed.none? do |path|
+      !File.fnmatch(compiled_pattern, path, File::FNM_EXTGLOB)
+    end
   end
 
   def validate_ci_workflow_exists
