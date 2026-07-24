@@ -39,6 +39,7 @@
 - govuk-dependency-checker
 - govuk-developer-docs
 - govuk-docker
+- govuk-job-request-operator
 - govuk-rota-announcer
 - govuk-rota-generator
 - govuk-saas-config
