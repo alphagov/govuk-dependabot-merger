@@ -174,7 +174,7 @@ RSpec.describe PullRequest do
         },
       }
     end
-    let(:commit_api_url) { "https://api.github.com/repos/alphagov/#{repo_name}/pulls/1/commits" }
+    let(:commit_api_url) { "https://api.github.com/repos/alphagov/#{repo_name}/pulls/1/commits?per_page=100" }
 
     it "return true if PR contains a single commit" do
       stub_request(:get, commit_api_url)
