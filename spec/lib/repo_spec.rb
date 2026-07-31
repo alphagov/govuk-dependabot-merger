@@ -166,6 +166,54 @@ RSpec.describe Repo do
       expect(repo.dependabot_pull_requests).to all be_a_kind_of(PullRequest)
       expect(repo.dependabot_pull_requests.count).to eq(1)
     end
+
+    it "should handle paginated responses and return all Dependabot PRs" do
+      stub_request(:get, external_config_file_api_url)
+        .to_return(status: 200, body: arbitrary_config.to_json, headers: { "Content-Type": "application/json" })
+
+      page1_pr = pull_request_api_response({ number: 1 })
+      page2_pr = pull_request_api_response({ number: 2 })
+      page3_pr = pull_request_api_response({ number: 3 })
+
+      # First page with Link header pointing to page 2
+      stub_request(:get, "https://api.github.com/repos/alphagov/#{repo_name}/pulls?sort=created&state=open")
+        .with { |req| req.headers["Accept"] == "application/vnd.github+json" }
+        .to_return(
+          status: 200,
+          body: [page1_pr].to_json,
+          headers: {
+            "Content-Type": "application/json",
+            "Link": '<https://api.github.com/repos/alphagov/foo/pulls?sort=created&state=open&page=2>; rel="next", <https://api.github.com/repos/alphagov/foo/pulls?sort=created&state=open&page=3>; rel="last"',
+          },
+        )
+
+      # Second page with Link header pointing to page 3
+      stub_request(:get, "https://api.github.com/repos/alphagov/#{repo_name}/pulls?sort=created&state=open&page=2")
+        .to_return(
+          status: 200,
+          body: [page2_pr].to_json,
+          headers: {
+            "Content-Type": "application/json",
+            "Link": '<https://api.github.com/repos/alphagov/foo/pulls?sort=created&state=open&page=3>; rel="next", <https://api.github.com/repos/alphagov/foo/pulls?sort=created&state=open&page=3>; rel="last"',
+          },
+        )
+
+      # Third page (last page, no next link)
+      stub_request(:get, "https://api.github.com/repos/alphagov/#{repo_name}/pulls?sort=created&state=open&page=3")
+        .to_return(
+          status: 200,
+          body: [page3_pr].to_json,
+          headers: {
+            "Content-Type": "application/json",
+            "Link": '<https://api.github.com/repos/alphagov/foo/pulls?sort=created&state=open&page=1>; rel="first", <https://api.github.com/repos/alphagov/foo/pulls?sort=created&state=open&page=2>; rel="prev"',
+          },
+        )
+
+      repo = Repo.new(repo_name)
+      expect(repo.dependabot_pull_requests).to all be_a_kind_of(PullRequest)
+      expect(repo.dependabot_pull_requests.count).to eq(3)
+      expect(repo.dependabot_pull_requests.map(&:number)).to eq([1, 2, 3])
+    end
   end
 
   describe "#dependabot_cooldown_days" do
