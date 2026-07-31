@@ -4,7 +4,6 @@ Dependency = Struct.new(:name) do
       .then { |response| YAML.safe_load response }
       .any? { |owner| owner["handle"] == "govuk" }
   rescue NoMethodError
-    puts "This rubygem could not be found."
     false
   end
 end
