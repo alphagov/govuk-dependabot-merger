@@ -143,10 +143,11 @@ RSpec.describe Repo do
   end
 
   describe "#dependabot_pull_requests" do
+    let(:pull_requests_url) { "https://api.github.com/repos/alphagov/#{repo_name}/pulls?per_page=100&sort=created&state=open" }
     it "should return an array of PullRequest objects" do
       stub_request(:get, external_config_file_api_url)
         .to_return(status: 200, body: arbitrary_config.to_json, headers: { "Content-Type": "application/json" })
-      stub_request(:get, "https://api.github.com/repos/alphagov/#{repo_name}/pulls?sort=created&state=open")
+      stub_request(:get, pull_requests_url)
         .to_return(status: 200, body: [pull_request_api_response, pull_request_api_response].to_json, headers: { "Content-Type": "application/json" })
 
       repo = Repo.new(repo_name)
@@ -159,7 +160,7 @@ RSpec.describe Repo do
         .to_return(status: 200, body: arbitrary_config.to_json, headers: { "Content-Type": "application/json" })
       non_dependabot_response = pull_request_api_response({ user: { login: "foo" } })
 
-      stub_request(:get, "https://api.github.com/repos/alphagov/#{repo_name}/pulls?sort=created&state=open")
+      stub_request(:get, pull_requests_url)
         .to_return(status: 200, body: [non_dependabot_response, pull_request_api_response].to_json, headers: { "Content-Type": "application/json" })
 
       repo = Repo.new(repo_name)

@@ -12,6 +12,12 @@ RSpec.describe GitHubClient do
       set_up_mock_token
       expect(GitHubClient.instance).to be_a_kind_of(Octokit::Client)
     end
+
+    it "should return an instance with auto_paginate enabled" do
+      set_up_mock_token
+      gh = GitHubClient.instance
+      expect(gh.auto_paginate).to be true
+    end
   end
 
   describe ".get" do

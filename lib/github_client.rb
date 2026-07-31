@@ -5,7 +5,9 @@ class GitHubAuthException < StandardError; end
 
 module GitHubClient
   def self.instance
-    Octokit::Client.new(access_token: token)
+    client = Octokit::Client.new(access_token: token)
+    client.auto_paginate = true
+    client
   end
 
   def self.get(url)
