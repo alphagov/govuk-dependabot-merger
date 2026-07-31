@@ -27,6 +27,7 @@ Repo = Struct.new(:name) do
     @dependabot_pull_requests ||= GitHubClient
       .instance
       .pull_requests("alphagov/#{name}", state: :open, sort: :created)
+      .then { |response| response.each_page.flat_map(&:to_a) }
       .select { |api_response| api_response.user.login == "dependabot[bot]" }
       .map { |api_response| PullRequest.new(api_response) }
   end

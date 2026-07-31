@@ -144,10 +144,19 @@ RSpec.describe Repo do
 
   describe "#dependabot_pull_requests" do
     it "should return an array of PullRequest objects" do
-      stub_request(:get, external_config_file_api_url)
-        .to_return(status: 200, body: arbitrary_config.to_json, headers: { "Content-Type": "application/json" })
-      stub_request(:get, "https://api.github.com/repos/alphagov/#{repo_name}/pulls?sort=created&state=open")
-        .to_return(status: 200, body: [pull_request_api_response, pull_request_api_response].to_json, headers: { "Content-Type": "application/json" })
+      prs = [pull_request_api_response, pull_request_api_response]
+      mock_response = Object.new
+      def mock_response.each(&)
+        @items.each(&)
+      end
+      def mock_response.each_page(&)
+        yield @items
+        self
+      end
+      mock_response.instance_variable_set(:@items, prs)
+
+      allow(GitHubClient).to receive(:instance).and_return(mock_response)
+      allow(mock_response).to receive(:pull_requests).and_return(mock_response)
 
       repo = Repo.new(repo_name)
       expect(repo.dependabot_pull_requests).to all be_a_kind_of(PullRequest)
@@ -155,16 +164,50 @@ RSpec.describe Repo do
     end
 
     it "should filter out any PRs not raised by Dependabot" do
-      stub_request(:get, external_config_file_api_url)
-        .to_return(status: 200, body: arbitrary_config.to_json, headers: { "Content-Type": "application/json" })
       non_dependabot_response = pull_request_api_response({ user: { login: "foo" } })
+      prs = [non_dependabot_response, pull_request_api_response]
 
-      stub_request(:get, "https://api.github.com/repos/alphagov/#{repo_name}/pulls?sort=created&state=open")
-        .to_return(status: 200, body: [non_dependabot_response, pull_request_api_response].to_json, headers: { "Content-Type": "application/json" })
+      mock_response = Object.new
+      def mock_response.each(&)
+        @items.each(&)
+      end
+      def mock_response.each_page(&)
+        yield @items
+        self
+      end
+      mock_response.instance_variable_set(:@items, prs)
+
+      allow(GitHubClient).to receive(:instance).and_return(mock_response)
+      allow(mock_response).to receive(:pull_requests).and_return(mock_response)
 
       repo = Repo.new(repo_name)
       expect(repo.dependabot_pull_requests).to all be_a_kind_of(PullRequest)
       expect(repo.dependabot_pull_requests.count).to eq(1)
+    end
+
+    it "fetches all pages of results before filtering" do
+      page1_pr = pull_request_api_response({ number: 1 })
+      page2_dependabot_pr = pull_request_api_response({ number: 2 })
+      page2_other_pr = pull_request_api_response({ number: 3, user: { login: "foo" } })
+
+      mock_response = Object.new
+      # Simulate first page (what the API returns directly)
+      def mock_response.each(&)
+        [page1_pr].each(&)
+      end
+      # Simulate pagination: each_page yields arrays of items per page
+      def mock_response.each_page(&)
+        yield [page1_pr]
+        yield [page2_dependabot_pr, page2_other_pr]
+        self
+      end
+
+      allow(GitHubClient).to receive(:instance).and_return(mock_response)
+      allow(mock_response).to receive(:pull_requests).and_return(mock_response)
+
+      repo = Repo.new(repo_name)
+      expect(repo.dependabot_pull_requests.count).to eq(2)
+      expect(repo.dependabot_pull_requests.map(&:number)).to eq([1, 2])
     end
   end
 
