@@ -44,7 +44,7 @@ class PolicyManager
   def auto_merge_external?(dependency_name, auto_merge_setting, update_external_dependencies)
     if update_external_dependencies
       if auto_merge_setting && !dependabot_cooldown_days_acceptable?
-        puts "blocking auto merging of #{dependency_name} because the configured dependabot cooldown is too low (#{@dependabot_cooldown_days})"
+        puts "blocking auto merging of #{dependency_name} because the configured dependabot cooldown is too low or is misconfigured (#{@dependabot_cooldown_days})"
         false
       else
         auto_merge_setting
@@ -71,7 +71,7 @@ class PolicyManager
   end
 
   def dependabot_cooldown_days_acceptable?
-    @dependabot_cooldown_days >= 3
+    @dependabot_cooldown_days.is_a?(Integer) && @dependabot_cooldown_days >= 3
   end
 
   def reasons_not_to_merge(pull_request)

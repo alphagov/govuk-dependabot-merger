@@ -27,6 +27,23 @@ RSpec.describe PolicyManager do
     end
   end
 
+  describe "#dependabot_cooldown_days_acceptable?" do
+    it "returns true if dependabot_cooldown_days is >= 3" do
+      policy_manager = PolicyManager.new({}, 5)
+      expect(policy_manager.dependabot_cooldown_days_acceptable?).to eq(true)
+    end
+
+    it "returns false if dependabot_cooldown_days is < 3" do
+      policy_manager = PolicyManager.new({}, 2)
+      expect(policy_manager.dependabot_cooldown_days_acceptable?).to eq(false)
+    end
+
+    it "returns false if dependabot_cooldown_days is not an integer" do
+      policy_manager = PolicyManager.new({}, "not an integer")
+      expect(policy_manager.dependabot_cooldown_days_acceptable?).to eq(false)
+    end
+  end
+
   describe "#dependency_policy" do
     RSpec.shared_examples "doesn't allow auto-merging internal dependencies" do
       let(:expected_policy) { { auto_merge: false, allowed_semver_bumps: [] } }
