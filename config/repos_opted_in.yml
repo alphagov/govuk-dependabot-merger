@@ -38,6 +38,8 @@
 - govuk-e2e-tests
 - govuk-fastly
 - govuk-job-request-operator
+- govuk-knowledge-graph-gcp
+- govuk-knowledge-graph-search
 - govuk-mirror
 - govuk-pact-mirror
 - govuk-replatform-test-app
@@ -48,6 +50,7 @@
 - govuk-saas-config
 - govuk-synthetic-test-app
 - govuk-synthetic-test-app-canary
+- govuk-s3-mirror
 - govuk-toolbox-image
 - govuk-user-reviewer
 - govuk_app_config
