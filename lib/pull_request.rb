@@ -43,6 +43,7 @@ class PullRequest
     allowed_file_patterns = [
       "yarn.lock",
       "package.json",
+      "package-lock.json",
       "Gemfile.lock",
       "Gemfile",
       "#{@api_response.base.repo.name}.gemspec",

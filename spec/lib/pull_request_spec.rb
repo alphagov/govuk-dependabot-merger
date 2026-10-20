@@ -229,6 +229,16 @@ RSpec.describe PullRequest do
       expect(pr.validate_files_changed).to eq(true)
     end
 
+    it "returns true if PR changes package-lock.json" do
+      pkg_json = head_commit_api_response[:files].first.dup
+      pkg_json[:filename] = "package-lock.json"
+      head_commit_api_response[:files] << pkg_json
+      stub_remote_commit(head_commit_api_response)
+
+      pr = PullRequest.new(pull_request_api_response)
+      expect(pr.validate_files_changed).to eq(true)
+    end
+
     it "returns true if PR changes go.mod" do
       pkg_json = head_commit_api_response[:files].first.dup
       pkg_json[:filename] = "go.mod"
