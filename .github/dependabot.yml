@@ -4,7 +4,7 @@ updates:
   - package-ecosystem: bundler
     directory: /
     schedule:
-      interval: monthly
+      interval: daily
       time: "10:30"
       timezone: "Europe/London"
     cooldown:
@@ -26,7 +26,7 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: monthly
+      interval: daily
       time: "10:30"
       timezone: "Europe/London"
     cooldown:
