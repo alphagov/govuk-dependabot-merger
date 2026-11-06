@@ -48,6 +48,7 @@
 - govuk-rota-generator
 - govuk-ruby-images
 - govuk-saas-config
+- govuk-social-data
 - govuk-synthetic-test-app
 - govuk-synthetic-test-app-canary
 - govuk-s3-mirror
