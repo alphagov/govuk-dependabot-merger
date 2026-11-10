@@ -56,7 +56,6 @@
 - govuk-user-reviewer
 - govuk_app_config
 - govuk_content_block_tools
-- govuk_content_item_loader
 - govuk_message_queue_consumer
 - govuk_personalisation
 - govuk_schemas
